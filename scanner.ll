@@ -25,11 +25,11 @@ yy::parser::symbol_type check_keywords(std::string lexeme, yy::location& loc);
 
 %option noyywrap nounput batch debug noinput
 
-id      [a-zA-Z][a-zA-Z_0-9]*
-fpnum   [0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?
-fixnum  (0|[1-9][0-9]*)\.?[0-9]*
-num     {fpnum}|{fixnum}
-blank   [ \t]
+id		[a-zA-Z][a-zA-Z_0-9]*
+fpnum	[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?
+fixnum	(0|[1-9][0-9]*)\.?[0-9]*
+num		{fpnum}|{fixnum}
+blank	[ \t]
 
 %{
     // Code run each time a pattern is matched.

@@ -38,39 +38,40 @@ using namespace llvm;
 // Flex va proprio a cercare YY_DECL perché
 // deve espanderla (usando M4) nel punto appropriato
 # define YY_DECL \
-  yy::parser::symbol_type yylex (driver& drv)
+	yy::parser::symbol_type yylex (driver& drv)
 // Per il parser è sufficiente una forward declaration
 YY_DECL;
 
 // Classe che organizza e gestisce il processo di compilazione
 class driver
 {
-public:
-	driver();
-	LLVMContext *context;
-	Module *module;
-	IRBuilder<> *builder;
-	std::map<std::string, Value *> NamedValues;
-	static inline int Cnt=0; //Contatore incrementale, per identificare registri SSA
-	RootAST* root;      // A fine parsing "punta" alla radice dell'AST
-	int parse (const std::string& f);
-	std::string file;
-	bool trace_parsing; // Abilita le tracce di debug el parser
-	void scan_begin (); // Implementata nello scanner
-	void scan_end ();   // Implementata nello scanner
-	bool trace_scanning;// Abilita le tracce di debug nello scanner
-	yy::location location; // Utillizata dallo scannar per localizzare i token
-	bool ast_print;
-	void codegen();
+	public:
+		driver();
+		LLVMContext *context;
+		Module *module;
+		IRBuilder<> *builder;
+		std::map<std::string, Value *> NamedValues;
+		static inline int Cnt=0; //Contatore incrementale, per identificare registri SSA
+		RootAST* root;      // A fine parsing "punta" alla radice dell'AST
+		int parse (const std::string& f);
+		std::string file;
+		bool trace_parsing; // Abilita le tracce di debug el parser
+		void scan_begin (); // Implementata nello scanner
+		void scan_end ();   // Implementata nello scanner
+		bool trace_scanning;// Abilita le tracce di debug nello scanner
+		yy::location location; // Utillizata dallo scannar per localizzare i token
+		bool ast_print;
+		void codegen();
 };
 
 // Classe base dell'intera gerarchia di classi che rappresentano
 // gli elementi del programma
-class RootAST {
-public:
-	virtual ~RootAST() {};
-	virtual void visit() {};
-	virtual Value *codegen(driver& drv) { return nullptr; };
+class RootAST 
+{
+	public:
+		virtual ~RootAST() {};
+		virtual void visit() {};
+		virtual Value *codegen(driver& drv) { return nullptr; };
 };
 
 // Classe che rappresenta la sequenza di statement
@@ -91,6 +92,7 @@ class ExprAST : public RootAST
 {
 	protected:
   		bool top;
+		
 	public:
   		virtual ~ExprAST() {};
   		void toggle();
