@@ -18,7 +18,7 @@ driver.o: driver.cc parser.hh driver.hh
 	clang++ -c driver.cc -I/usr/lib/llvm-14/include -std=c++17 -fno-exceptions -D_GNU_SOURCE -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS 
 
 parser.cc, parser.hh: parser.yy 
-	bison -o parser.cc parser.yy
+	bison -o parser.cc parser.yy -W
 
 scanner.cc: scanner.ll
 	flex -o scanner.cc scanner.ll

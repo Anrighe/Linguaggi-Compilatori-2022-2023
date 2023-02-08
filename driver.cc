@@ -37,8 +37,9 @@ void driver::codegen()
 /********************** Handle Top Expressions ********************/
 Value* TopExpression(ExprAST* E, driver& drv) 
 {
-	// Crea una funzione anonima anonima il cui body è un'espressione top-level
+	// Crea una funzione anonima il cui body è un'espressione top-level
 	// viene "racchiusa" un'espressione top-level
+	std::cout<<"CREO LA FUNZIONE ANONIMA\n"; // Debug
 	E->toggle(); // Evita la doppia emissione del prototipo
 	PrototypeAST *Proto = new PrototypeAST("__espr_anonima" + std::to_string(++drv.Cnt), std::vector<std::string>());
 	Proto->noemit();
@@ -140,10 +141,13 @@ Value *VariableExprAST::codegen(driver& drv)
 };
 
 /******************** Binary Expression Tree **********************/
-BinaryExprAST::BinaryExprAST(std::string Op, ExprAST* LHS, ExprAST* RHS): Op(Op), LHS(LHS), RHS(RHS) { top = false; };
+BinaryExprAST::BinaryExprAST(std::string Op, ExprAST* LHS, ExprAST* RHS): Op(Op), LHS(LHS), RHS(RHS) 
+	{ 	std::cout<<"COSTRUTTORE BinaryExprAST\n";
+		top = false; };
  
 void BinaryExprAST::visit() 
-{
+{	
+	std::cout<<"Visit BinaryExprAST\n";
 	std::cout<<"("<<Op<<" ";
 	LHS->visit();
 	if (RHS!=nullptr) 
@@ -153,8 +157,10 @@ void BinaryExprAST::visit()
 
 Value *BinaryExprAST::codegen(driver& drv) 
 {
+	std::cout<<"CODEGEN DI BINARY EXPR AST\n";
 	if (gettop()) 
 	{
+		std::cout<<"RITORNO TOP EXPRESSION\n";
     	return TopExpression(this, drv);
   	} 
 	else 
@@ -173,10 +179,10 @@ Value *BinaryExprAST::codegen(driver& drv)
 			case '/':
 				return drv.builder->CreateFDiv(L, R, "addregister");
 			case '=':
-				std::cout<<"PRIMO CARATTERE ="<<std::endl; //Debug
+				//std::cout<<"PRIMO CARATTERE ="<<std::endl; //Debug
 				if (Op[1] == '=')
 				{	
-					std::cout<<"SECONDO CARATTERE ="<<std::endl; //Debug
+					//std::cout<<"SECONDO CARATTERE ="<<std::endl; //Debug
 					L = drv.builder->CreateFCmpOEQ(L, R, "compare");
 					return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpres");
 				}
@@ -352,6 +358,7 @@ Function *FunctionAST::codegen(driver& drv)
 /********************** If Expressions ********************/
 IfExprAST::IfExprAST(ExprAST * cond, ExprAST * thenExpr, ExprAST * elseExpr)
 {	
+	std::cout<<"BBBBBBB\n";
 	this->cond = cond;
 	this->thenExpr = thenExpr;
 	this->elseExpr = elseExpr;
@@ -370,5 +377,79 @@ void IfExprAST::visit()
 
 Value * IfExprAST::codegen(driver &drv)
 {
-	std::cout<<"PLACEHOLDER GENERA IL CODICE PER UNA IFEXPR AST"<<std::endl;
+	std::cout<<"TOP IN IFEXPRAST: "<<this->top<<std::endl;
+
+	// this->top vale 0 quando la IfExprAST è già dentro a una funzione
+	// this->top vale 1 quando la IfExprAST non è dentro a una funzione
+	if (gettop()) 
+		return TopExpression(this, drv); //se la IfExpr non è dentro a una funzione la "racchiudo" in una funzione anonima
+
+	Value * condition = cond->codegen(drv);
+	
+	if (!condition)
+	{
+		std::cout<<"condition valutato come false"<<std::endl;
+    	return nullptr;
+	}
+
+	// Conversione della condizione ad un booleano comparandola in NON EQUAL con 0.0
+  	condition = drv.builder->CreateFCmpONE(condition, ConstantFP::get(*drv.context, APFloat(0.0)), "iftest");
+	std::cout<<"AAAAAAA\n";
+
+	if (drv.builder == nullptr)
+		std::cout<<"DRV NULL"<<std::endl;
+	if (drv.builder->GetInsertBlock() == nullptr)
+		std::cout<<"GetInsertBlock NULL"<<std::endl;
+
+	Function *TheFunction = drv.builder->GetInsertBlock()->getParent(); //getParent() trova la funzione che contiene i 3 blocchi
+
+	// Create blocks for the then and else cases.  Insert the 'then' block at the
+	// end of the function.
+	BasicBlock *ThenBB = BasicBlock::Create(*drv.context, "then", TheFunction);
+	BasicBlock *ElseBB = BasicBlock::Create(*drv.context, "else");
+	BasicBlock *MergeBB = BasicBlock::Create(*drv.context, "merge");
+
+	// Creo l'istruzione di salto condizionato al valore di condition
+	drv.builder->CreateCondBr(condition, ThenBB, ElseBB);
+
+	// Genero le istruzioni nel blocco condizionale 'then'
+	drv.builder->SetInsertPoint(ThenBB);
+	Value * ThenValue = thenExpr->codegen(drv);
+	if (!ThenValue)
+	{
+		std::cout<<"ThenValue valutato come false"<<std::endl;
+  		return nullptr;
+	}
+
+	drv.builder->CreateBr(MergeBB);
+
+	ThenBB = drv.builder->GetInsertBlock();
+	TheFunction->getBasicBlockList().push_back(ElseBB);
+
+	// Genero le istruzioni nel blocco condizionale 'else'
+	drv.builder->SetInsertPoint(ElseBB);
+	Value * ElseValue = elseExpr->codegen(drv);	
+	if (!ElseValue)
+	{
+		std::cout<<"ElseValue valutato come false"<<std::endl;
+  		return nullptr;
+	}
+
+	drv.builder->CreateBr(MergeBB);
+	ElseBB = drv.builder->GetInsertBlock();
+
+	TheFunction->getBasicBlockList().push_back(MergeBB);
+	drv.builder->SetInsertPoint(MergeBB);
+
+	/* 	Type::getDoubleTy(*drv.context): tipo
+		2: da quanti blocchi arrivo (coming edge)
+		ifres: nome del registro SSA 	*/	
+  	PHINode *IFRES = drv.builder->CreatePHI(Type::getDoubleTy(*drv.context), 2, "ifres");
+
+	IFRES->addIncoming(ThenValue, ThenBB); // Se arrivo dal blocco Then completa l'espressione con ThenValue
+  	IFRES->addIncoming(ElseValue, ElseBB); // Se arrivo dal blocco Else completa l'espressione con ElseValue
+
+	
+
+	return IFRES; // Ritorna il valore contenuto nel registro SSA
 }

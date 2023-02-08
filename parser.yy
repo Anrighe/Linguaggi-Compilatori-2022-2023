@@ -114,7 +114,7 @@ exp:
 | idexp                	{ $$ = $1; }
 | "(" exp ")"          	{ $$ = $2; }
 | "number"           	{ $$ = new NumberExprAST($1); };
-| ifexpr 				{ $$ = $1; };
+| ifexpr 				{ $$ = $1; }
 
 ifexpr: 
   "if" exp "then" exp "else" exp { $$ = new IfExprAST($2, $4, $6);}

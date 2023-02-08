@@ -87,17 +87,17 @@ yy::parser::symbol_type check_keywords(std::string lexeme, yy::location& loc)
    	} 
 	else if (lexeme == "if")
     {
-        std::cout<<"!IF! : "<<lexeme<<std::endl; //DEBUG
+        //std::cout<<"!IF! : "<<lexeme<<std::endl; //DEBUG
 		return yy::parser::make_IF(loc);
     }
 	else if (lexeme == "then")
     {
-        std::cout<<"!THEN! : "<<lexeme<<std::endl; //DEBUG
+        //std::cout<<"!THEN! : "<<lexeme<<std::endl; //DEBUG
 		return yy::parser::make_THEN(loc);
     }
 	else if (lexeme == "else")
     {
-        std::cout<<"!ELSE! : "<<lexeme<<std::endl; //DEBUG
+        //std::cout<<"!ELSE! : "<<lexeme<<std::endl; //DEBUG
 		return yy::parser::make_ELSE(loc);
     }
     else
