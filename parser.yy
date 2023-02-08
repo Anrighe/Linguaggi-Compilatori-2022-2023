@@ -47,6 +47,7 @@
 	IF			"if"
 	THEN		"then"
 	ELSE		"else"
+	ENDIF 		"end"
 	LT			"<"
 	GT			">"
 	LE			"<="
@@ -117,7 +118,7 @@ exp:
 | ifexpr 				{ $$ = $1; }
 
 ifexpr: 
-  "if" exp "then" exp "else" exp { $$ = new IfExprAST($2, $4, $6);}
+  "if" exp "then" exp "else" exp "end" { $$ = new IfExprAST($2, $4, $6);}
 
 idexp:
   "id"                 { $$ = new VariableExprAST($1); }

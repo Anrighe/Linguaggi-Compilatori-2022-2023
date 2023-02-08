@@ -100,6 +100,10 @@ yy::parser::symbol_type check_keywords(std::string lexeme, yy::location& loc)
         //std::cout<<"!ELSE! : "<<lexeme<<std::endl; //DEBUG
 		return yy::parser::make_ELSE(loc);
     }
+	else if (lexeme == "end")
+    {
+		return yy::parser::make_ENDIF(loc);
+    }
     else
    	{
      	return yy::parser::make_IDENTIFIER(yytext, loc);
