@@ -59,6 +59,7 @@ loc.step ();
 "<="	return yy::parser::make_LE		   	(loc);
 ">="	return yy::parser::make_GE		   	(loc);
 "=="	return yy::parser::make_COMPARE		(loc);
+":"		return yy::parser::make_COLON		(loc);
 
 {num} {
 	errno = 0;

@@ -147,7 +147,7 @@ BinaryExprAST::BinaryExprAST(std::string Op, ExprAST* LHS, ExprAST* RHS): Op(Op)
  
 void BinaryExprAST::visit() 
 {	
-	std::cout<<"Visit BinaryExprAST\n";
+	//std::cout<<"Visit BinaryExprAST\n"; // Debug
 	std::cout<<"("<<Op<<" ";
 	LHS->visit();
 	if (RHS!=nullptr) 
@@ -165,25 +165,30 @@ Value *BinaryExprAST::codegen(driver& drv)
   	} 
 	else 
 	{
+		// L e R memorizzano il riferimento ai registri SSA che contengono i risultati delle due sottoespressioni
 		Value *L = LHS->codegen(drv);
 		Value *R = RHS->codegen(drv);
 		if (!L || !R) return nullptr;
 		switch (Op[0])
 		{
 			case '+':
+				//std::cout<<Op<<std::endl; // Debug
 				return drv.builder->CreateFAdd(L, R, "addregister");
 			case '-':
+				//std::cout<<Op<<std::endl; // Debug
 				return drv.builder->CreateFSub(L, R, "subregister");
 			case '*':
+				//std::cout<<Op<<std::endl; // Debug
 				return drv.builder->CreateFMul(L, R, "mulregister");
 			case '/':
-				return drv.builder->CreateFDiv(L, R, "addregister");
+				//std::cout<<Op<<std::endl; // Debug
+				return drv.builder->CreateFDiv(L, R, "divregister");
 			case '=':
 				//std::cout<<"PRIMO CARATTERE ="<<std::endl; //Debug
 				if (Op[1] == '=')
 				{	
 					//std::cout<<"SECONDO CARATTERE ="<<std::endl; //Debug
-					L = drv.builder->CreateFCmpOEQ(L, R, "compare");
+					L = drv.builder->CreateFCmpOEQ(L, R, "compareEQ");
 					return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpres");
 				}
 				else
@@ -191,19 +196,27 @@ Value *BinaryExprAST::codegen(driver& drv)
 			case '<':
 				if (Op[1] == '=')
 				{
-					L = drv.builder->CreateFCmpULE(L, R, "tmp");
-					return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpres");
+					L = drv.builder->CreateFCmpULE(L, R, "compareLE");
+					return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpLEres");
 				}	
-				L = drv.builder->CreateFCmpULT(L, R, "tmp");
-				return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpres"); 
+				L = drv.builder->CreateFCmpULT(L, R, "compareLT");
+				return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpLTres"); 
 			case '>':
 				if (Op[1] == '=')
 				{
-					L = drv.builder->CreateFCmpUGE(L, R, "tmp");
-					return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpres");
+					L = drv.builder->CreateFCmpUGE(L, R, "compareGE");
+					return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpGEres");
 				}	
-				L = drv.builder->CreateFCmpUGT(L, R, "tmp");
-				return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpres"); 
+				L = drv.builder->CreateFCmpUGT(L, R, "compareGT");
+				return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpGTres"); 
+			case ':':
+				//std::cout<<"CASE :"<<std::endl; // Debug
+				//LHS->codegen(drv);
+				//std::cout<<Op<<std::endl; // Debug
+				//return RHS->codegen(drv);
+				//return drv.builder->CreateUIToFP(R, Type::getDoubleTy(*drv.context), "compoundres"); 
+				return R;
+				
 			default:  
 				return LogErrorV("Operatore binario non supportato");
 		}
@@ -394,18 +407,18 @@ Value * IfExprAST::codegen(driver &drv)
 
 	// Conversione della condizione ad un booleano comparandola in NON EQUAL con 0.0
   	condition = drv.builder->CreateFCmpONE(condition, ConstantFP::get(*drv.context, APFloat(0.0)), "iftest");
-	std::cout<<"AAAAAAA\n";
+	
 
 	if (drv.builder == nullptr)
 		std::cout<<"DRV NULL"<<std::endl;
 	if (drv.builder->GetInsertBlock() == nullptr)
 		std::cout<<"GetInsertBlock NULL"<<std::endl;
 
-	Function *TheFunction = drv.builder->GetInsertBlock()->getParent(); //getParent() trova la funzione che contiene i 3 blocchi
+	Function *function = drv.builder->GetInsertBlock()->getParent(); //getParent() trova la funzione che contiene i 3 blocchi
 
 	// Create blocks for the then and else cases.  Insert the 'then' block at the
 	// end of the function.
-	BasicBlock *ThenBB = BasicBlock::Create(*drv.context, "then", TheFunction);
+	BasicBlock *ThenBB = BasicBlock::Create(*drv.context, "then", function);
 	BasicBlock *ElseBB = BasicBlock::Create(*drv.context, "else");
 	BasicBlock *MergeBB = BasicBlock::Create(*drv.context, "merge");
 
@@ -424,7 +437,7 @@ Value * IfExprAST::codegen(driver &drv)
 	drv.builder->CreateBr(MergeBB);
 
 	ThenBB = drv.builder->GetInsertBlock();
-	TheFunction->getBasicBlockList().push_back(ElseBB);
+	function->getBasicBlockList().push_back(ElseBB);
 
 	// Genero le istruzioni nel blocco condizionale 'else'
 	drv.builder->SetInsertPoint(ElseBB);
@@ -438,7 +451,7 @@ Value * IfExprAST::codegen(driver &drv)
 	drv.builder->CreateBr(MergeBB);
 	ElseBB = drv.builder->GetInsertBlock();
 
-	TheFunction->getBasicBlockList().push_back(MergeBB);
+	function->getBasicBlockList().push_back(MergeBB);
 	drv.builder->SetInsertPoint(MergeBB);
 
 	/* 	Type::getDoubleTy(*drv.context): tipo
@@ -449,7 +462,41 @@ Value * IfExprAST::codegen(driver &drv)
 	IFRES->addIncoming(ThenValue, ThenBB); // Se arrivo dal blocco Then completa l'espressione con ThenValue
   	IFRES->addIncoming(ElseValue, ElseBB); // Se arrivo dal blocco Else completa l'espressione con ElseValue
 
-	
 
 	return IFRES; // Ritorna il valore contenuto nel registro SSA
+}
+
+/********************** Operatore Unario ********************/
+UnaryExprAST::UnaryExprAST(std::string sign, ExprAST* RHS)
+{	
+	this->sign = sign;
+	this->RHS = RHS;
+};
+
+void UnaryExprAST::visit()
+{
+	std::cout<<"("<<sign<<" ";
+	if (RHS!=nullptr) 
+		RHS->visit();
+	std::cout<<")";
+}
+
+Value * UnaryExprAST::codegen(driver &drv)
+{
+	// Se l'operatore unario non è contenuto nel corpo di una funzione, viene inserito in una funzione anima
+	if (gettop()) 
+		return TopExpression(this, drv);
+	
+	Value *R = RHS->codegen(drv);
+
+	if (sign == "+") //se l'operatore unario è un + ritorno semplicemente il risultato della parte destra
+	{
+		return R;
+	}
+	else
+	{
+		if (sign == "-") //se l'operatore unario è un - converto la parte destra a double cambiato di segno
+			return drv.builder->CreateFNeg(R, "unaryRes");
+	}
+	return LogErrorV("Operatore unario non supportato");
 }

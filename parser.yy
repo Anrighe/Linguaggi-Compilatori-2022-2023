@@ -53,6 +53,7 @@
 	LE			"<="
 	GE			">="
 	COMPARE 	"=="
+	COLON		":"
 ;
 
 %token <std::string> IDENTIFIER "id"
@@ -68,6 +69,7 @@
 %type <PrototypeAST*> proto
 %type <std::vector<std::string>> idseq
 %type <IfExprAST*> ifexpr
+
 
 %%
 %start startsymb;
@@ -99,8 +101,10 @@ idseq:
 | "id" idseq           { $2.insert($2.begin(), $1); $$ = $2; };
 
 
-%left "+" "-" "*" "/";
+%left ":";
+%left "*" "/";
 %left "<" ">" "<=" ">=" "==";
+%left "-" "+";
 
 exp:
  exp "+" exp          	{ $$ = new BinaryExprAST("+", $1, $3); }
@@ -112,10 +116,13 @@ exp:
 | exp "<=" exp			{ $$ = new BinaryExprAST("<=", $1, $3); }
 | exp ">=" exp			{ $$ = new BinaryExprAST(">=", $1, $3); }
 | exp "==" exp			{ $$ = new BinaryExprAST("==", $1, $3); }
+| exp ":" exp			{ $$ = new BinaryExprAST(":", $1, $3); }
+| "-" exp				{ $$ = new UnaryExprAST("-", $2); }
+| "+" exp				{ $$ = new UnaryExprAST("+", $2); }
 | idexp                	{ $$ = $1; }
 | "(" exp ")"          	{ $$ = $2; }
-| "number"           	{ $$ = new NumberExprAST($1); };
-| ifexpr 				{ $$ = $1; }
+| "number"           	{ $$ = new NumberExprAST($1); }
+| ifexpr 				{ $$ = $1; };
 
 ifexpr: 
   "if" exp "then" exp "else" exp "end" { $$ = new IfExprAST($2, $4, $6);}

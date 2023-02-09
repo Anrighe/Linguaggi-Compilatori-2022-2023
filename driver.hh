@@ -198,6 +198,20 @@ class IfExprAST : public ExprAST
 		Value * codegen(driver &drv) override;
 };
 
+/// UnaryExprAST - Classe per la rappresentazione di operatori unari
+class UnaryExprAST : public ExprAST 
+{
+	private:
+  		std::string sign;
+  		ExprAST* RHS;
+
+	public:
+  		UnaryExprAST(std::string sign, ExprAST* RHS);
+  		void visit() override;
+  		Value *codegen(driver& drv) override;
+};
+
+
 //void InitializeModule();
 
 #endif // ! DRIVER_HH
