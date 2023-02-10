@@ -50,7 +50,7 @@ class driver
 		LLVMContext *context;
 		Module *module;
 		IRBuilder<> *builder;
-		std::map<std::string, Value *> NamedValues;
+		std::map<std::string, Value *> NamedValues; // Symbol Table -> coppia <stringa, registro SSA>
 		static inline int Cnt=0; //Contatore incrementale, per identificare registri SSA
 		RootAST* root;      // A fine parsing "punta" alla radice dell'AST
 		int parse (const std::string& f);
@@ -59,7 +59,7 @@ class driver
 		void scan_begin (); // Implementata nello scanner
 		void scan_end ();   // Implementata nello scanner
 		bool trace_scanning;// Abilita le tracce di debug nello scanner
-		yy::location location; // Utillizata dallo scannar per localizzare i token
+		yy::location location; // Utillizata dallo scanner per localizzare i token
 		bool ast_print;
 		void codegen();
 };
@@ -87,7 +87,7 @@ class SeqAST : public RootAST
 		Value *codegen(driver& drv) override;
 };
 
-/// ExprAST - Classe base per tutti i nodi espressione
+// ExprAST - Classe base per tutti i nodi espressione
 class ExprAST : public RootAST 
 {
 	protected:
@@ -99,7 +99,7 @@ class ExprAST : public RootAST
   		bool gettop();
 };
 
-/// NumberExprAST - Classe per la rappresentazione di costanti numeriche
+// NumberExprAST - Classe per la rappresentazione di costanti numeriche
 class NumberExprAST : public ExprAST 
 {
 	private:
@@ -111,7 +111,7 @@ class NumberExprAST : public ExprAST
   		Value *codegen(driver& drv) override;
 };
 
-/// VariableExprAST - Classe per la rappresentazione di riferimenti a variabili
+// VariableExprAST - Classe per la rappresentazione di riferimenti a variabili
 class VariableExprAST : public ExprAST 
 {
 	private:
@@ -124,11 +124,11 @@ class VariableExprAST : public ExprAST
   		Value *codegen(driver& drv) override;
 };
 
-/// BinaryExprAST - Classe per la rappresentazione di operatori binary
+// BinaryExprAST - Classe per la rappresentazione di operatori binary
 class BinaryExprAST : public ExprAST 
 {
 	private:
-  		std::string Op;
+  		std::string Op; //Op è stato cambiato da char a string per permettere di poter usare operatori binari di lunghezza >1
   		ExprAST* LHS;
   		ExprAST* RHS;
 
@@ -138,7 +138,7 @@ class BinaryExprAST : public ExprAST
   		Value *codegen(driver& drv) override;
 };
 
-/// CallExprAST - Classe per la rappresentazione di chiamate di funzione
+// CallExprAST - Classe per la rappresentazione di chiamate di funzione
 class CallExprAST : public ExprAST 
 {
 	private:
@@ -151,9 +151,9 @@ class CallExprAST : public ExprAST
   		Value *codegen(driver& drv) override;
 };
 
-/// PrototypeAST - Classe per la rappresentazione dei prototipi di funzione
-/// (nome, numero e nome dei parametri; in questo caso il tipo è implicito
-/// perché unico)
+// PrototypeAST - Classe per la rappresentazione dei prototipi di funzione
+// (nome, numero e nome dei parametri; in questo caso il tipo è implicito
+// perché unico)
 class PrototypeAST : public RootAST 
 {
 	private:
@@ -171,7 +171,7 @@ class PrototypeAST : public RootAST
 		bool emitp();
 };
 
-/// FunctionAST - Classe che rappresenta la definizione di una funzione
+// FunctionAST - Classe che rappresenta la definizione di una funzione
 class FunctionAST : public RootAST 
 {
 	private:
@@ -185,12 +185,13 @@ class FunctionAST : public RootAST
   		Function *codegen(driver& drv) override;
 };
 
+// IfExprAST - Classe che rappresenta la definizione di un costrutto if-else-then
 class IfExprAST : public ExprAST
 {
 	private:
-		ExprAST * cond;
-		ExprAST * thenExpr;
-		ExprAST * elseExpr;
+		ExprAST * cond; // condizione dopo l'if
+		ExprAST * thenExpr; // espressione dopo il then
+		ExprAST * elseExpr; // espressione dopo l'else
 
 	public:
 		IfExprAST(ExprAST * cond, ExprAST * thenExpr, ExprAST * elseExpr);
@@ -198,17 +199,45 @@ class IfExprAST : public ExprAST
 		Value * codegen(driver &drv) override;
 };
 
-/// UnaryExprAST - Classe per la rappresentazione di operatori unari
+// UnaryExprAST - Classe per la rappresentazione di operatori unari
 class UnaryExprAST : public ExprAST 
 {
 	private:
-  		std::string sign;
-  		ExprAST* RHS;
+  		std::string sign; // segno precedente all'espressione ('-' oppure '+')
+  		ExprAST* RHS; // espressione successiva al segno
 
 	public:
   		UnaryExprAST(std::string sign, ExprAST* RHS);
   		void visit() override;
   		Value *codegen(driver& drv) override;
+};
+
+// ForExprAST - Classe per la rappresentazione dei costrutti for
+class ForExprAST : public ExprAST
+{
+	private:
+		std::string varName;
+		ExprAST * start;
+		ExprAST * end;
+		ExprAST * step;
+		ExprAST * body;
+
+	public:
+		ForExprAST(std::string varName, ExprAST * start, ExprAST * end,ExprAST * step, ExprAST * body);
+		void visit() override;
+		Value * codegen(driver &drv) override;
+};
+
+// ForExprAST - Classe per la rappresentazione dei costrutti step
+class StepAST
+{
+	private:
+		ExprAST * stepValue;
+
+	public:
+		StepAST(ExprAST * stepValue);
+		void visit();
+		ExprAST * codegen(driver &drv);
 };
 
 

@@ -21,7 +21,7 @@
 #endif
 
 yy::parser::symbol_type check_keywords(std::string lexeme, yy::location& loc);
-%}
+%} 
 
 %option noyywrap nounput batch debug noinput
 
@@ -40,10 +40,10 @@ blank	[ \t]
     // A handy shortcut to the location held by the driver.
     yy::location& loc = drv.location;
     // Code run each time yylex is called.
-loc.step ();
+	loc.step(); // step() fa avanzare la posizione begin fino al valore di end
 %}
-{blank}+	loc.step ();
-[\r\n]+	    loc.lines (yyleng); loc.step (); //"\r\n se si è su windows, altrimenti \n"
+{blank}+	loc.step(); /*se trovo uno spazio o tabulazione avanzo semplicemente con lo step*/
+[\r\n]+	    loc.lines (yyleng); loc.step (); /*"\r\n se si è su Windows, altrimenti \n"*/
 
 
 "-"     return yy::parser::make_MINUS     	(loc);
@@ -54,19 +54,20 @@ loc.step ();
 ")"     return yy::parser::make_RPAREN    	(loc);
 ";"     return yy::parser::make_SEMICOLON 	(loc);
 ","     return yy::parser::make_COMMA     	(loc);
-"<"		return yy::parser::make_LT		   	(loc);
-">"		return yy::parser::make_GT		   	(loc);
 "<="	return yy::parser::make_LE		   	(loc);
 ">="	return yy::parser::make_GE		   	(loc);
 "=="	return yy::parser::make_COMPARE		(loc);
+"<"		return yy::parser::make_LT		   	(loc);
+">"		return yy::parser::make_GT		   	(loc);
+"="		return yy::parser::make_EQUAL		(loc);
 ":"		return yy::parser::make_COLON		(loc);
 
 {num} {
 	errno = 0;
-	double n = strtod(yytext, NULL);
-	if (! (n!=HUGE_VAL && n!=-HUGE_VAL && errno != ERANGE))
-    	throw yy::parser::syntax_error (loc, "Float value is out of range: " + std::string(yytext));
-  	return yy::parser::make_NUMBER (n, loc);
+	double n = strtod(yytext, NULL); //conversione stringa yytext a double
+	if (! (n!=HUGE_VAL && n!=-HUGE_VAL && errno != ERANGE)) //se il double è fuori dal range di rappresentazione solleva un syntax error
+    	throw yy::parser::syntax_error(loc, "Float value is out of range: " + std::string(yytext));
+  	return yy::parser::make_NUMBER(n, loc);
 }
 
 {id} return check_keywords(yytext, loc);
@@ -88,30 +89,35 @@ yy::parser::symbol_type check_keywords(std::string lexeme, yy::location& loc)
    	} 
 	else if (lexeme == "if")
     {
-        //std::cout<<"!IF! : "<<lexeme<<std::endl; //DEBUG
 		return yy::parser::make_IF(loc);
     }
 	else if (lexeme == "then")
     {
-        //std::cout<<"!THEN! : "<<lexeme<<std::endl; //DEBUG
 		return yy::parser::make_THEN(loc);
     }
 	else if (lexeme == "else")
     {
-        //std::cout<<"!ELSE! : "<<lexeme<<std::endl; //DEBUG
 		return yy::parser::make_ELSE(loc);
     }
 	else if (lexeme == "end")
     {
-		return yy::parser::make_ENDIF(loc);
+		return yy::parser::make_ENDEXPR(loc);
     }
-    else
+	else if (lexeme == "for")
+    {
+		return yy::parser::make_FOR(loc);
+    }
+	else if (lexeme == "in")
+    {
+		return yy::parser::make_IN(loc);
+    }
+    else //se non è nessun token sopra indicato allora è necessariamente un identificatore
    	{
      	return yy::parser::make_IDENTIFIER(yytext, loc);
    	}
 }
 
-void driver::scan_begin ()
+void driver::scan_begin()
 {
   	yy_flex_debug = trace_scanning;
   	if (file.empty () || file == "-")
@@ -119,11 +125,11 @@ void driver::scan_begin ()
   	else if (!(yyin = fopen(file.c_str(), "r")))
     {
       	std::cerr<<"Cannot open "<<file<<": "<<strerror(errno)<<'\n';
-      	exit (EXIT_FAILURE);
+      	exit(EXIT_FAILURE);
     }
 }
 
-void driver::scan_end ()
+void driver::scan_end()
 {
-  	fclose (yyin);
+  	fclose(yyin);
 }

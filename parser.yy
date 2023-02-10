@@ -17,6 +17,8 @@
 	class SeqAST;
 	class PrototypeAST;
 	class IfExprAST;
+	class ForExprAST;
+	class StepAST;
 }
 
 // The parsing context.
@@ -32,6 +34,8 @@
 }
 
 %define api.token.prefix {TOK_}
+
+/* Definizione token terminali */
 %token
 	END  0  "end of file"
 	SEMICOLON  	";"
@@ -47,12 +51,15 @@
 	IF			"if"
 	THEN		"then"
 	ELSE		"else"
-	ENDIF 		"end"
-	LT			"<"
-	GT			">"
+	ENDEXPR 	"end"
+	FOR 		"for"
+	IN 			"in"
 	LE			"<="
 	GE			">="
 	COMPARE 	"=="
+	LT			"<"
+	GT			">"
+	EQUAL 		"="
 	COLON		":"
 ;
 
@@ -69,45 +76,50 @@
 %type <PrototypeAST*> proto
 %type <std::vector<std::string>> idseq
 %type <IfExprAST*> ifexpr
+%type <ForExprAST*> forexpr
+%type <StepAST*> step
+
 
 
 %%
 %start startsymb;
 
 startsymb:
-program             { drv.root = $1; }
+program             	{ drv.root = $1; } /* Per passare al driver la radice dell'albero */
 
 program:
-  %empty               { $$ = new SeqAST(nullptr,nullptr); }
-|  top ";" program     { $$ = new SeqAST($1,$3); };
+  %empty               	{ $$ = new SeqAST(nullptr,nullptr); }
+|  top ";" program     	{ $$ = new SeqAST($1,$3); };
 
 top:
-%empty                 { $$ = nullptr; }
-| definition           { $$ = $1; }
-| external             { $$ = $1; }
-| exp                  { $$ = $1; $1->toggle(); };
+  %empty                { $$ = nullptr; }
+| definition           	{ $$ = $1; }
+| external             	{ $$ = $1; }
+| exp                  	{ $$ = $1; $1->toggle(); };
 
 definition:
-  "def" proto exp      { $$ = new FunctionAST($2, $3); $2->noemit(); };
+  "def" proto exp      	{ $$ = new FunctionAST($2, $3); $2->noemit(); };
 
 external:
-  "extern" proto       { $$ = $2; };
+  "extern" proto       	{ $$ = $2; };
 
 proto:
-  "id" "(" idseq ")"   { $$ = new PrototypeAST($1, $3); };
+  "id" "(" idseq ")"   	{ $$ = new PrototypeAST($1, $3); };
 
 idseq:
-  %empty               { std::vector<std::string> args; $$ = args; }
-| "id" idseq           { $2.insert($2.begin(), $1); $$ = $2; };
+  %empty               	{ std::vector<std::string> args; $$ = args; }
+| "id" idseq           	{ $2.insert($2.begin(), $1); $$ = $2; };
 
 
+/* Specifica dell'associatività e delle precedenze */
 %left ":";
-%left "*" "/";
-%left "<" ">" "<=" ">=" "==";
+%left "<" ">";
+%left "<=" ">=" "==";
 %left "-" "+";
+%left "*" "/";
 
 exp:
- exp "+" exp          	{ $$ = new BinaryExprAST("+", $1, $3); }
+  exp "+" exp          	{ $$ = new BinaryExprAST("+", $1, $3); }
 | exp "-" exp          	{ $$ = new BinaryExprAST("-", $1, $3); }
 | exp "*" exp          	{ $$ = new BinaryExprAST("*", $1, $3); }
 | exp "/" exp          	{ $$ = new BinaryExprAST("/", $1, $3); }
@@ -122,26 +134,34 @@ exp:
 | idexp                	{ $$ = $1; }
 | "(" exp ")"          	{ $$ = $2; }
 | "number"           	{ $$ = new NumberExprAST($1); }
-| ifexpr 				{ $$ = $1; };
+| ifexpr 				{ $$ = $1; }
+| forexpr				{ std::cout<<"FOREXPR\n"; };
 
 ifexpr: 
-  "if" exp "then" exp "else" exp "end" { $$ = new IfExprAST($2, $4, $6);}
+  "if" exp "then" exp "else" exp "end" 	{ $$ = new IfExprAST($2, $4, $6);}; 
+
+forexpr:
+  "for" idexp "=" exp "," exp step "in" exp "end" 	{ std::cout<<"FOR IDEXP = EXP, EXP STEP IN EXP END"; };
+
+step:
+  %empty 				{ std::cout<<"empty step\n"; }
+| "," exp				{ $$ = new StepAST($2); };
 
 idexp:
   "id"                 { $$ = new VariableExprAST($1); }
-| "id" "(" optexp ")"  { $$ = new CallExprAST($1,$3); };
+| "id" "(" optexp ")"  { $$ = new CallExprAST($1, $3); };
 
 optexp:
 %empty                 { std::vector<ExprAST*> args;
                          args.push_back(nullptr);
-			 $$ = args;
+			 			 $$ = args;
                        }
 | explist              { $$ = $1; };
 
 explist:
   exp                  { std::vector<ExprAST*> args;
                          args.push_back($1);
-			 $$ = args;
+			 			 $$ = args;
                        }
 | exp "," explist      { $3.insert($3.begin(), $1); $$ = $3; };
 
@@ -149,5 +169,5 @@ explist:
 
 void yy::parser::error (const location_type& l, const std::string& m)
 {
-	std::cerr << l << ": " << m << '\n';
+	std::cerr<<l<<": "<<m<<'\n';
 }

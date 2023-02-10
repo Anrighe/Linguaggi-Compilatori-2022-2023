@@ -100,7 +100,7 @@ Value *SeqAST::codegen(driver& drv)
 NumberExprAST::NumberExprAST(double Val): Val(Val) { top = false; };
 void NumberExprAST::visit() 
 {
-	std::cout << Val << " ";
+	std::cout<<Val<<" ";
 };
 
 Value *NumberExprAST::codegen(driver& drv) 
@@ -112,8 +112,10 @@ Value *NumberExprAST::codegen(driver& drv)
 };
 
 /****************** Variable Expression TreeAST *******************/
-VariableExprAST::VariableExprAST(std::string &Name):
-	Name(Name) { top = false; };
+VariableExprAST::VariableExprAST(std::string &Name): Name(Name) 
+{ 
+	top = false; 
+};
 
 const std::string& VariableExprAST::getName() const 
 {
@@ -127,11 +129,12 @@ void VariableExprAST::visit()
 
 Value *VariableExprAST::codegen(driver& drv) 
 {
+	// Per le variabili non viene generato codice
 	if (gettop()) 
 	{
 		return TopExpression(this, drv);
 	} 
-	else 
+	else // viene effettuato l'accesso alla symbol table e se presente viene restituito il valore associato alla variabile
 	{
 		Value *V = drv.NamedValues[Name];
 		if (!V) 
@@ -142,12 +145,13 @@ Value *VariableExprAST::codegen(driver& drv)
 
 /******************** Binary Expression Tree **********************/
 BinaryExprAST::BinaryExprAST(std::string Op, ExprAST* LHS, ExprAST* RHS): Op(Op), LHS(LHS), RHS(RHS) 
-	{ 	std::cout<<"COSTRUTTORE BinaryExprAST\n";
-		top = false; };
- 
+{ 	
+	std::cout<<"COSTRUTTORE BinaryExprAST\n"; // Debug
+	top = false; 
+};
+
 void BinaryExprAST::visit() 
 {	
-	//std::cout<<"Visit BinaryExprAST\n"; // Debug
 	std::cout<<"("<<Op<<" ";
 	LHS->visit();
 	if (RHS!=nullptr) 
@@ -157,14 +161,15 @@ void BinaryExprAST::visit()
 
 Value *BinaryExprAST::codegen(driver& drv) 
 {
-	std::cout<<"CODEGEN DI BINARY EXPR AST\n";
+	std::cout<<"CODEGEN DI BINARY EXPR AST\n"; // Debug
 	if (gettop()) 
 	{
-		std::cout<<"RITORNO TOP EXPRESSION\n";
+		std::cout<<"RITORNO TOP EXPRESSION\n"; // Debug
     	return TopExpression(this, drv);
   	} 
 	else 
 	{
+		// Inizialmente vengono invocati codegen() sui nodi figli:
 		// L e R memorizzano il riferimento ai registri SSA che contengono i risultati delle due sottoespressioni
 		Value *L = LHS->codegen(drv);
 		Value *R = RHS->codegen(drv);
@@ -172,51 +177,41 @@ Value *BinaryExprAST::codegen(driver& drv)
 		switch (Op[0])
 		{
 			case '+':
-				//std::cout<<Op<<std::endl; // Debug
 				return drv.builder->CreateFAdd(L, R, "addregister");
 			case '-':
-				//std::cout<<Op<<std::endl; // Debug
 				return drv.builder->CreateFSub(L, R, "subregister");
 			case '*':
-				//std::cout<<Op<<std::endl; // Debug
 				return drv.builder->CreateFMul(L, R, "mulregister");
 			case '/':
-				//std::cout<<Op<<std::endl; // Debug
 				return drv.builder->CreateFDiv(L, R, "divregister");
 			case '=':
-				//std::cout<<"PRIMO CARATTERE ="<<std::endl; //Debug
-				if (Op[1] == '=')
+				if (Op[1] == '=') // ==
 				{	
-					//std::cout<<"SECONDO CARATTERE ="<<std::endl; //Debug
-					L = drv.builder->CreateFCmpOEQ(L, R, "compareEQ");
-					return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpres");
+					L = drv.builder->CreateFCmpUEQ(L, R, "compareEQ"); // CreateFloatCompareOrderedEqual ritorna un Value che contiene True o False (Unordered: non considera i NaN)
+					return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpres"); // Conversione True/False a Double
 				}
 				else
-					return LogErrorV("Operatore binario = non supportato"); //non utilizzato inizialmente perché il solo op binario = non è ammesso
+					return LogErrorV("Operatore binario = non supportato"); //non utilizzato inizialmente perché il solo op binario = non è ammesso TODO: Cancellare in caso di for implementato
 			case '<':
-				if (Op[1] == '=')
+				if (Op[1] == '=') // <=
 				{
-					L = drv.builder->CreateFCmpULE(L, R, "compareLE");
-					return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpLEres");
+					L = drv.builder->CreateFCmpULE(L, R, "compareLE"); // CreateFloatCompareUnorderedLesser(OR)Equal ritorna un Value che contiene True o False (Unordered: non considera i NaN)
+					return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpLEres"); // Conversione True/False a Double
 				}	
-				L = drv.builder->CreateFCmpULT(L, R, "compareLT");
-				return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpLTres"); 
+				L = drv.builder->CreateFCmpULT(L, R, "compareLT"); // CreateFloatCompareUnorderedLesserThan ritorna un Value che contiene True o False (Unordered: non considera i NaN)
+				return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpLTres"); // Conversione True/False a Double
 			case '>':
-				if (Op[1] == '=')
+				if (Op[1] == '=') // >=
 				{
-					L = drv.builder->CreateFCmpUGE(L, R, "compareGE");
-					return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpGEres");
+					L = drv.builder->CreateFCmpUGE(L, R, "compareGE"); // CreateFloatCompareUnorderedGreater(OR)Equal ritorna un Value che contiene True o False (Unordered: non considera i NaN)
+					return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpGEres"); // Conversione True/False a Double
 				}	
-				L = drv.builder->CreateFCmpUGT(L, R, "compareGT");
-				return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpGTres"); 
+				L = drv.builder->CreateFCmpUGT(L, R, "compareGT"); // CreateFloatCompareUnorderedGreaterThan ritorna un Value che contiene True o False (Unordered: non considera i NaN)
+				return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpGTres"); // Conversione True/False a Double
 			case ':':
-				//std::cout<<"CASE :"<<std::endl; // Debug
-				//LHS->codegen(drv);
-				//std::cout<<Op<<std::endl; // Debug
-				//return RHS->codegen(drv);
-				//return drv.builder->CreateUIToFP(R, Type::getDoubleTy(*drv.context), "compoundres"); 
+				// Nel caso di un : (compound expression), è sufficiente ritornare il Value * R, ovvero la valutazione dell'espressione destra,
+				// in quanto "Il valore di una espressione composta si definisce semplicemente come il valore dell’ultima espressione nella sequenza"
 				return R;
-				
 			default:  
 				return LogErrorV("Operatore binario non supportato");
 		}
@@ -245,15 +240,16 @@ Value *CallExprAST::codegen(driver& drv)
 	} 
 	else 
 	{
-		// Cerchiamo la funzione nell'ambiente globale
+		// Interroga il modulo corrente per recuperare l'oggetto di tipo Function che rappresenta la funzione
 		Function *CalleeF = drv.module->getFunction(Callee);
 		if (!CalleeF)
 			return LogErrorV("Funzione non definita");
 
-		// Controlliamo che gli argomenti coincidano in numero coi parametri
+		// Controlliamo che gli argomenti coincidano in numero coi parametri specificati nella definizione di funzione
 		if (CalleeF->arg_size() != Args.size())
 			return LogErrorV("Numero di argomenti non corretto");
-
+		
+		// Genera il codice per il calcolo degli argomenti
 		std::vector<Value *> ArgsV;
 		for (auto arg : Args) 
 		{
@@ -267,16 +263,18 @@ Value *CallExprAST::codegen(driver& drv)
 
 /************************* Prototype Tree *************************/
 PrototypeAST::PrototypeAST(std::string Name, std::vector<std::string> Args): Name(Name), Args(std::move(Args)) 
-	{ emit = true; };
+{
+	emit = true; 
+};
 
 const std::string& PrototypeAST::getName() const { return Name; };
 const std::vector<std::string>& PrototypeAST::getArgs() const { return Args; };
 void PrototypeAST::visit() 
 {
-	std::cout << "extern " << getName() << "( ";
+	std::cout<<"extern "<<getName()<<"( ";
 	for (auto it=getArgs().begin(); it!= getArgs().end(); ++it) 
 	{
-		std::cout<<*it <<' ';
+		std::cout<<*it<<' ';
 	};
 	std::cout<<')';
 };
@@ -346,14 +344,14 @@ Function *FunctionAST::codegen(driver& drv)
 	drv.builder->SetInsertPoint(BB);
 
 	// Registra gli argomenti nella symbol table
-	drv.NamedValues.clear();
+	drv.NamedValues.clear(); // Cancella la symbol table per via dello scope
 	for (auto &Arg : TheFunction->args())
-		drv.NamedValues[std::string(Arg.getName())] = &Arg;
+		drv.NamedValues[std::string(Arg.getName())] = &Arg; // Inserisce gli argomenti nella symbol table
 
 	if (Value *RetVal = Body->codegen(drv)) 
 	{
 		// Termina la creazione del codice corrispondente alla funzione
-		drv.builder->CreateRet(RetVal);
+		drv.builder->CreateRet(RetVal); // Inserimento di un'istruzione ret, che ripristina il controllo di flusso e opzionalmente un valore al chiamante
 
 		// Effettua la validazione del codice e un controllo di consistenza
 		verifyFunction(*TheFunction);
@@ -371,7 +369,7 @@ Function *FunctionAST::codegen(driver& drv)
 /********************** If Expressions ********************/
 IfExprAST::IfExprAST(ExprAST * cond, ExprAST * thenExpr, ExprAST * elseExpr)
 {	
-	std::cout<<"BBBBBBB\n";
+	std::cout<<"COSTRUTTORE IFEXPRAST\n"; //DEBUG
 	this->cond = cond;
 	this->thenExpr = thenExpr;
 	this->elseExpr = elseExpr;
@@ -390,7 +388,8 @@ void IfExprAST::visit()
 
 Value * IfExprAST::codegen(driver &drv)
 {
-	std::cout<<"TOP IN IFEXPRAST: "<<this->top<<std::endl;
+	
+	std::cout<<"TOP IN IFEXPRAST: "<<this->top<<std::endl; //Debug
 
 	// this->top vale 0 quando la IfExprAST è già dentro a una funzione
 	// this->top vale 1 quando la IfExprAST non è dentro a una funzione
@@ -400,19 +399,15 @@ Value * IfExprAST::codegen(driver &drv)
 	Value * condition = cond->codegen(drv);
 	
 	if (!condition)
-	{
-		std::cout<<"condition valutato come false"<<std::endl;
     	return nullptr;
-	}
 
 	// Conversione della condizione ad un booleano comparandola in NON EQUAL con 0.0
-  	condition = drv.builder->CreateFCmpONE(condition, ConstantFP::get(*drv.context, APFloat(0.0)), "iftest");
+  	condition = drv.builder->CreateFCmpUNE(condition, ConstantFP::get(*drv.context, APFloat(0.0)), "iftest"); // CreateFloatCompareUnorderedNotEqual
 	
-
-	if (drv.builder == nullptr)
-		std::cout<<"DRV NULL"<<std::endl;
-	if (drv.builder->GetInsertBlock() == nullptr)
-		std::cout<<"GetInsertBlock NULL"<<std::endl;
+	if (drv.builder == nullptr) // Debug
+		std::cout<<"DRV NULL"<<std::endl; // Debug
+	if (drv.builder->GetInsertBlock() == nullptr) // Debug
+		std::cout<<"GetInsertBlock NULL"<<std::endl; // Debug
 
 	Function *function = drv.builder->GetInsertBlock()->getParent(); //getParent() trova la funzione che contiene i 3 blocchi
 
@@ -489,14 +484,66 @@ Value * UnaryExprAST::codegen(driver &drv)
 	
 	Value *R = RHS->codegen(drv);
 
-	if (sign == "+") //se l'operatore unario è un + ritorno semplicemente il risultato della parte destra
+	if (sign == "+") // Se l'operatore unario è un + ritorno semplicemente il risultato della parte destra
 	{
 		return R;
 	}
 	else
 	{
-		if (sign == "-") //se l'operatore unario è un - converto la parte destra a double cambiato di segno
+		if (sign == "-") // Se l'operatore unario è un - converto la parte destra a double cambiato di segno
 			return drv.builder->CreateFNeg(R, "unaryRes");
 	}
 	return LogErrorV("Operatore unario non supportato");
 }
+
+
+/********************** For Expression ********************/
+ForExprAST::ForExprAST(std::string varName, ExprAST * start, ExprAST * end, ExprAST * step, ExprAST * body)
+{
+	this->varName = varName;
+	this->start = start;
+	this->end = end;
+	this->step = step;
+	this->body = body;
+}
+
+void ForExprAST::visit()
+{
+	std::cout<<"("<<" ";
+	std::cout<<")";
+}
+
+
+Value * ForExprAST::codegen(driver &drv)
+{
+	std::cout<<"CODEGEN FOREXPRAST"<<std::endl; // Debug
+	if (gettop()) 
+		return TopExpression(this, drv);
+	
+}
+
+
+/********************** Step ********************/
+StepAST::StepAST(ExprAST * stepValue)
+{
+	std::cout<<"COSTRUTTORE STEPAST\n"; // Debug
+	this->stepValue = stepValue;
+};
+
+void StepAST::visit()
+{
+	std::cout<<"VISIT DI STEPAST\n"; // Debug
+}
+
+ExprAST * StepAST::codegen(driver &drv)
+{
+	std::cout<<"CODEGEN DI STEPAST\n"; // Debug
+	//if (gettop()) 
+		//return TopExpression(this, drv);
+
+	return stepValue;
+	//Value *step = stepValue->codegen(drv);
+
+	//return drv.builder->CreateUIToFP(step, Type::getDoubleTy(*drv.context), "stepres"); 
+}
+
