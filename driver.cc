@@ -370,9 +370,9 @@ Function *FunctionAST::codegen(driver& drv)
 IfExprAST::IfExprAST(ExprAST * cond, ExprAST * thenExpr, ExprAST * elseExpr)
 {	
 	std::cout<<"COSTRUTTORE IFEXPRAST\n"; //DEBUG
-	this->cond = cond;
-	this->thenExpr = thenExpr;
-	this->elseExpr = elseExpr;
+	this->cond = cond; // Condizione dopo l'if
+	this->thenExpr = thenExpr; // Espressione dopo il then
+	this->elseExpr = elseExpr; // Espressione dopo l'else
 };
 
 void IfExprAST::visit()
@@ -388,15 +388,14 @@ void IfExprAST::visit()
 
 Value * IfExprAST::codegen(driver &drv)
 {
-	
 	std::cout<<"TOP IN IFEXPRAST: "<<this->top<<std::endl; //Debug
 
-	// this->top vale 0 quando la IfExprAST è già dentro a una funzione
-	// this->top vale 1 quando la IfExprAST non è dentro a una funzione
+	// top vale 0 quando la IfExprAST è già dentro a una funzione
+	// top vale 1 quando la IfExprAST NON è dentro a una funzione
 	if (gettop()) 
 		return TopExpression(this, drv); //se la IfExpr non è dentro a una funzione la "racchiudo" in una funzione anonima
 
-	Value * condition = cond->codegen(drv);
+	Value * condition = cond->codegen(drv); // Valutazione della condizione dopo l'if
 	
 	if (!condition)
     	return nullptr;
@@ -411,8 +410,7 @@ Value * IfExprAST::codegen(driver &drv)
 
 	Function *function = drv.builder->GetInsertBlock()->getParent(); //getParent() trova la funzione che contiene i 3 blocchi
 
-	// Create blocks for the then and else cases.  Insert the 'then' block at the
-	// end of the function.
+	// Creazione dei tre blocchi base Then, Else e Merge
 	BasicBlock *ThenBB = BasicBlock::Create(*drv.context, "then", function);
 	BasicBlock *ElseBB = BasicBlock::Create(*drv.context, "else");
 	BasicBlock *MergeBB = BasicBlock::Create(*drv.context, "merge");
@@ -422,32 +420,27 @@ Value * IfExprAST::codegen(driver &drv)
 
 	// Genero le istruzioni nel blocco condizionale 'then'
 	drv.builder->SetInsertPoint(ThenBB);
-	Value * ThenValue = thenExpr->codegen(drv);
+	Value * ThenValue = thenExpr->codegen(drv); // Valutazione espressione del then
 	if (!ThenValue)
-	{
-		std::cout<<"ThenValue valutato come false"<<std::endl;
   		return nullptr;
-	}
 
-	drv.builder->CreateBr(MergeBB);
 
-	ThenBB = drv.builder->GetInsertBlock();
+	drv.builder->CreateBr(MergeBB); // CreateBr: Crea un'istruzione di branch 'br label X'
+
+	ThenBB = drv.builder->GetInsertBlock(); // GetInsertBlock: ritorna il basic block dove la nuova istruzione verrà inserita
 	function->getBasicBlockList().push_back(ElseBB);
 
 	// Genero le istruzioni nel blocco condizionale 'else'
 	drv.builder->SetInsertPoint(ElseBB);
-	Value * ElseValue = elseExpr->codegen(drv);	
+	Value * ElseValue = elseExpr->codegen(drv); // Valutazione espressione dell'else
 	if (!ElseValue)
-	{
-		std::cout<<"ElseValue valutato come false"<<std::endl;
   		return nullptr;
-	}
 
-	drv.builder->CreateBr(MergeBB);
-	ElseBB = drv.builder->GetInsertBlock();
+	drv.builder->CreateBr(MergeBB); // CreateBr: Crea un'istruzione di branch 'br label X'
+	ElseBB = drv.builder->GetInsertBlock(); // GetInsertBlock: ritorna il basic block dove la nuova istruzione verrà inserita
 
 	function->getBasicBlockList().push_back(MergeBB);
-	drv.builder->SetInsertPoint(MergeBB);
+	drv.builder->SetInsertPoint(MergeBB); // SetInsertPoint: cambia l'insert point al blocco MergeBB
 
 	/* 	Type::getDoubleTy(*drv.context): tipo
 		2: da quanti blocchi arrivo (coming edge)
@@ -457,15 +450,14 @@ Value * IfExprAST::codegen(driver &drv)
 	IFRES->addIncoming(ThenValue, ThenBB); // Se arrivo dal blocco Then completa l'espressione con ThenValue
   	IFRES->addIncoming(ElseValue, ElseBB); // Se arrivo dal blocco Else completa l'espressione con ElseValue
 
-
 	return IFRES; // Ritorna il valore contenuto nel registro SSA
 }
 
 /********************** Operatore Unario ********************/
 UnaryExprAST::UnaryExprAST(std::string sign, ExprAST* RHS)
 {	
-	this->sign = sign;
-	this->RHS = RHS;
+	this->sign = sign; // Segno precedente all'espressione ('-' oppure '+')
+	this->RHS = RHS; // Espressione successiva all'operatore unario
 };
 
 void UnaryExprAST::visit()
@@ -478,7 +470,7 @@ void UnaryExprAST::visit()
 
 Value * UnaryExprAST::codegen(driver &drv)
 {
-	// Se l'operatore unario non è contenuto nel corpo di una funzione, viene inserito in una funzione anima
+	// Se l'operatore unario non è contenuto nel corpo di una funzione, viene inserito in una funzione anonima
 	if (gettop()) 
 		return TopExpression(this, drv);
 	
