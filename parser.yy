@@ -77,7 +77,7 @@
 %type <std::vector<std::string>> idseq
 %type <IfExprAST*> ifexpr
 %type <ForExprAST*> forexpr
-%type <StepAST*> step
+%type <ExprAST*> step
 
 
 
@@ -135,17 +135,17 @@ exp:
 | "(" exp ")"          	{ $$ = $2; }
 | "number"           	{ $$ = new NumberExprAST($1); }
 | ifexpr 				{ $$ = $1; }
-| forexpr				{ $$ = $1; }; // std::cout<<"FOREXPR\n";
+| forexpr				{ $$ = $1; };
 
 ifexpr: 
   "if" exp "then" exp "else" exp "end" 	{ $$ = new IfExprAST($2, $4, $6);}; 
 
 forexpr:
-  "for" idexp "=" exp "," exp step "in" exp "end" 	{ $$ = new ForExprAST($2, $4, $6, $7, $9); };
+  "for" "id" "=" exp "," exp step "in" exp "end" 	{ $$ = new ForExprAST($2, $4, $6, $7, $9); };
 
 step:
-  %empty 				{ std::cout<<"empty step PLACEHOLDER\n"; }
-| "," exp				{ $$ = new StepAST($2); };
+  %empty 				{ $$ = nullptr; }
+| "," exp				{ $$ = $2; };
 
 idexp:
   "id"                 { $$ = new VariableExprAST($1); }

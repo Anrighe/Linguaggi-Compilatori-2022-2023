@@ -216,28 +216,17 @@ class UnaryExprAST : public ExprAST
 class ForExprAST : public ExprAST
 {
 	private:
-		ExprAST * varName;
+		std::string varName;
 		ExprAST * start;
 		ExprAST * end;
-		StepAST * step;
+		ExprAST * step;
 		ExprAST * body;
 
 	public:
-		ForExprAST(ExprAST * varName, ExprAST * start, ExprAST * end, StepAST * step, ExprAST * body);
+		ForExprAST(std::string &varName, ExprAST * start, ExprAST * end, ExprAST * step, ExprAST * body)
+			: varName(varName), start(start), end(end), step(step), body(body) {}
 		void visit() override;
 		Value * codegen(driver &drv) override;
-};
-
-// ForExprAST - Classe per la rappresentazione dei costrutti step
-class StepAST
-{
-	private:
-		ExprAST * stepValue;
-
-	public:
-		StepAST(ExprAST * stepValue);
-		void visit();
-		Value * codegen(driver &drv);
 };
 
 

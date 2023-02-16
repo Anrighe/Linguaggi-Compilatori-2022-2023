@@ -491,7 +491,8 @@ Value * UnaryExprAST::codegen(driver &drv)
 
 
 /********************** For Expression ********************/
-ForExprAST::ForExprAST(ExprAST * varName, ExprAST * start, ExprAST * end, StepAST * step, ExprAST * body)
+/*
+ForExprAST::ForExprAST(std::string &varName, ExprAST * start, ExprAST * end, ExprAST * step, ExprAST * body)
 {
 	std::cout<<"COSTRUTTORE FOREXPRAST"<<std::endl; // Debug
 	this->varName = varName;
@@ -499,7 +500,7 @@ ForExprAST::ForExprAST(ExprAST * varName, ExprAST * start, ExprAST * end, StepAS
 	this->end = end;
 	this->step = step;
 	this->body = body;
-}
+}*/
 
 void ForExprAST::visit()
 {
@@ -512,40 +513,65 @@ Value * ForExprAST::codegen(driver &drv)
 {
 	std::cout<<"CODEGEN FOREXPRAST"<<std::endl; // Debug
 	if (gettop()) 
-		return TopExpression(this, drv);
+		LogErrorV("Variabile del for non definita");
+
+	Value * startVal = start->codegen(drv);
+	if (!startVal)
+		return nullptr;
+
+	Function * function = drv.builder->GetInsertBlock()->getParent();
+	BasicBlock * preHeaderBB = drv.builder->GetInsertBlock();
+	BasicBlock * loopBB = BasicBlock::Create(*drv.context, "loop", function);
+
+	drv.builder->CreateBr(loopBB);
 	
-}
+	drv.builder->SetInsertPoint(loopBB);
 
+	PHINode * variable = drv.builder->CreatePHI(Type::getDoubleTy(*drv.context), 2, varName);
+	variable->addIncoming(startVal, preHeaderBB);
 
-/********************** Step ********************/
-StepAST::StepAST(ExprAST * stepValue)
-{
-	std::cout<<"COSTRUTTORE STEPAST\n"; // Debug
-	this->stepValue = stepValue;
-};
+	Value * oldVal = drv.NamedValues[varName];
+	drv.NamedValues[varName] = variable;
 
-void StepAST::visit()
-{
-	std::cout<<"VISIT DI STEPAST\n"; // Debug
-}
+	Value * bodyValue = body->codegen(drv); // risolvo l'espressione nel body che devo ritornare come valore del for
+	if (!bodyValue) 
+		return nullptr;
 
-Value * StepAST::codegen(driver &drv)
-{
-	std::cout<<"CODEGEN DI STEPAST\n"; // Debug
+	Value * stepVal = nullptr;
+	if (step)
+	{
+		stepVal = step->codegen(drv);
+		if (!stepVal)
+			return nullptr;
+	}
+	else // Se non è stato specificato lo step
+	{
+		stepVal = ConstantFP::get(*drv.context, APFloat(1.0));
+	}
 
-	//VariableExprAST * step = stepValue->codegen(drv);
-	//return step;
+	Value * endCond = end->codegen(drv);
+	if (!endCond)
+		return nullptr;
 
-	//Value * step = drv.builder->CreateUIToFP(step, Type::getDoubleTy(*drv.context), "stepres"); 
+	endCond = drv.builder->CreateFCmpONE(endCond, ConstantFP::get(*drv.context, APFloat(0.0)), "loopcond");
 
-	//return step;
+	Value * nextVar = drv.builder->CreateFAdd(variable, stepVal, "nextvar");
 
-	//if (gettop()) 
-		//return TopExpression(this, drv);
+	BasicBlock * loopEndBB = drv.builder->GetInsertBlock();
+	BasicBlock * afterBB = BasicBlock::Create(*drv.context, "afterloop", function);
 
-	//return stepValue;
-	//Value *step = stepValue->codegen(drv);
+	drv.builder->CreateCondBr(endCond, loopBB, afterBB);
 
-	//return drv.builder->CreateUIToFP(step, Type::getDoubleTy(*drv.context), "stepres"); 
+	drv.builder->SetInsertPoint(afterBB); // Tutto il codice seguente al loop verrà inserito nell'afterBB
+
+	variable->addIncoming(nextVar, loopEndBB);
+
+	if (oldVal)
+		drv.NamedValues[varName] = oldVal;
+	else
+		drv.NamedValues.erase(varName);
+
+	return bodyValue;
+	
 }
 
