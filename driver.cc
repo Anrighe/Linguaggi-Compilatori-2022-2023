@@ -3,7 +3,7 @@
 
 Value *LogErrorV(const std::string Str) 
 {
-	std::cerr << Str << std::endl;
+	std::cerr<<Str<<std::endl;
 	return nullptr;
 }
 
@@ -315,9 +315,9 @@ FunctionAST::FunctionAST(PrototypeAST* Proto, ExprAST* Body): Proto(Proto), Body
 void FunctionAST::visit() 
 {
 	std::cout << Proto->getName() << "( ";
-	for (auto it=Proto->getArgs().begin(); it!= Proto->getArgs().end(); ++it) 
+	for (auto it = Proto->getArgs().begin(); it!= Proto->getArgs().end(); ++it) 
 	{
-		std::cout << *it << ' ';
+		std::cout<<*it<<' ';
   	};
 	std::cout << ')';
 	Body->visit();
@@ -331,7 +331,7 @@ Function *FunctionAST::codegen(driver& drv)
 	// E se non esiste prova a definirla
 	if (TheFunction) 
 	{
-		LogErrorV("Funzione "+name+" già definita");
+		LogErrorV("Funzione " + name + " già definita");
 		return nullptr;
 	}
 	if (!TheFunction)
