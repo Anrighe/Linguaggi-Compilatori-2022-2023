@@ -114,6 +114,7 @@ Value *NumberExprAST::codegen(driver& drv)
 /****************** Variable Expression TreeAST *******************/
 VariableExprAST::VariableExprAST(std::string &Name): Name(Name) 
 { 
+	std::cout<<"COSTRUTTORE VARIABLEEXPRAST: "<<this->getName()<<"\n"; // Debug
 	top = false; 
 };
 
@@ -490,8 +491,9 @@ Value * UnaryExprAST::codegen(driver &drv)
 
 
 /********************** For Expression ********************/
-ForExprAST::ForExprAST(std::string varName, ExprAST * start, ExprAST * end, ExprAST * step, ExprAST * body)
+ForExprAST::ForExprAST(ExprAST * varName, ExprAST * start, ExprAST * end, StepAST * step, ExprAST * body)
 {
+	std::cout<<"COSTRUTTORE FOREXPRAST"<<std::endl; // Debug
 	this->varName = varName;
 	this->start = start;
 	this->end = end;
@@ -527,13 +529,21 @@ void StepAST::visit()
 	std::cout<<"VISIT DI STEPAST\n"; // Debug
 }
 
-ExprAST * StepAST::codegen(driver &drv)
+Value * StepAST::codegen(driver &drv)
 {
 	std::cout<<"CODEGEN DI STEPAST\n"; // Debug
+
+	//VariableExprAST * step = stepValue->codegen(drv);
+	//return step;
+
+	//Value * step = drv.builder->CreateUIToFP(step, Type::getDoubleTy(*drv.context), "stepres"); 
+
+	//return step;
+
 	//if (gettop()) 
 		//return TopExpression(this, drv);
 
-	return stepValue;
+	//return stepValue;
 	//Value *step = stepValue->codegen(drv);
 
 	//return drv.builder->CreateUIToFP(step, Type::getDoubleTy(*drv.context), "stepres"); 

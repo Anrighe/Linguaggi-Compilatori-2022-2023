@@ -43,7 +43,7 @@ blank	[ \t]
 	loc.step(); // step() fa avanzare la posizione begin fino al valore di end
 %}
 {blank}+	loc.step(); /*se trovo uno spazio o tabulazione avanzo semplicemente con lo step*/
-[\r\n]+	    loc.lines (yyleng); loc.step (); /*"\r\n se si è su Windows, altrimenti \n"*/
+[\r\n]+	    loc.lines(yyleng); loc.step (); /*"\r\n se si è su Windows, altrimenti \n"*/
 
 
 "-"     return yy::parser::make_MINUS     	(loc);

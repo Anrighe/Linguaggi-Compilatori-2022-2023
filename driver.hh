@@ -216,14 +216,14 @@ class UnaryExprAST : public ExprAST
 class ForExprAST : public ExprAST
 {
 	private:
-		std::string varName;
+		ExprAST * varName;
 		ExprAST * start;
 		ExprAST * end;
-		ExprAST * step;
+		StepAST * step;
 		ExprAST * body;
 
 	public:
-		ForExprAST(std::string varName, ExprAST * start, ExprAST * end,ExprAST * step, ExprAST * body);
+		ForExprAST(ExprAST * varName, ExprAST * start, ExprAST * end, StepAST * step, ExprAST * body);
 		void visit() override;
 		Value * codegen(driver &drv) override;
 };
@@ -237,7 +237,7 @@ class StepAST
 	public:
 		StepAST(ExprAST * stepValue);
 		void visit();
-		ExprAST * codegen(driver &drv);
+		Value * codegen(driver &drv);
 };
 
 

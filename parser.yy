@@ -135,16 +135,16 @@ exp:
 | "(" exp ")"          	{ $$ = $2; }
 | "number"           	{ $$ = new NumberExprAST($1); }
 | ifexpr 				{ $$ = $1; }
-| forexpr				{ std::cout<<"FOREXPR\n"; };
+| forexpr				{ $$ = $1; }; // std::cout<<"FOREXPR\n";
 
 ifexpr: 
   "if" exp "then" exp "else" exp "end" 	{ $$ = new IfExprAST($2, $4, $6);}; 
 
 forexpr:
-  "for" idexp "=" exp "," exp step "in" exp "end" 	{ std::cout<<"FOR IDEXP = EXP, EXP STEP IN EXP END"; };
+  "for" idexp "=" exp "," exp step "in" exp "end" 	{ $$ = new ForExprAST($2, $4, $6, $7, $9); };
 
 step:
-  %empty 				{ std::cout<<"empty step\n"; }
+  %empty 				{ std::cout<<"empty step PLACEHOLDER\n"; }
 | "," exp				{ $$ = new StepAST($2); };
 
 idexp:
