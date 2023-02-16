@@ -178,6 +178,7 @@ Value *BinaryExprAST::codegen(driver& drv)
 		switch (Op[0])
 		{
 			case '+':
+				std::cout<<"CASE + \n";
 				return drv.builder->CreateFAdd(L, R, "addregister");
 			case '-':
 				return drv.builder->CreateFSub(L, R, "subregister");
@@ -210,7 +211,7 @@ Value *BinaryExprAST::codegen(driver& drv)
 				L = drv.builder->CreateFCmpUGT(L, R, "compareGT"); // CreateFloatCompareUnorderedGreaterThan ritorna un Value che contiene True o False (Unordered: non considera i NaN)
 				return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpGTres"); // Conversione True/False a Double
 			case ':':
-				// Nel caso di un : (compound expression), è sufficiente ritornare il Value * R, ovvero la valutazione dell'espressione destra,
+				// Nel caso di un ':' (compound expression), è sufficiente ritornare il Value * R, ovvero la valutazione dell'espressione destra,
 				// in quanto "Il valore di una espressione composta si definisce semplicemente come il valore dell’ultima espressione nella sequenza"
 				return R;
 			default:  
@@ -378,11 +379,11 @@ IfExprAST::IfExprAST(ExprAST * cond, ExprAST * thenExpr, ExprAST * elseExpr)
 
 void IfExprAST::visit()
 {
-	std::cout<<"(";
+	std::cout<<"( ";
 	cond->visit();
-	std::cout<<"then";
+	std::cout<<"then:";
 	thenExpr->visit();
-	std::cout<<"else";
+	std::cout<<"else:";
 	elseExpr->visit();
 	std::cout<<")"<<std::endl;
 }
@@ -491,21 +492,17 @@ Value * UnaryExprAST::codegen(driver &drv)
 
 
 /********************** For Expression ********************/
-/*
-ForExprAST::ForExprAST(std::string &varName, ExprAST * start, ExprAST * end, ExprAST * step, ExprAST * body)
-{
-	std::cout<<"COSTRUTTORE FOREXPRAST"<<std::endl; // Debug
-	this->varName = varName;
-	this->start = start;
-	this->end = end;
-	this->step = step;
-	this->body = body;
-}*/
-
 void ForExprAST::visit()
 {
-	std::cout<<"("<<" ";
-	std::cout<<")";
+	std::cout<<"( "<<varName<<"=";
+	start->visit();
+
+	end->visit();
+	std::cout<<" step:";
+	step->visit();
+	std::cout<<" body:";
+	body->visit();
+	std::cout<<")"<<std::endl;
 }
 
 
@@ -544,10 +541,9 @@ Value * ForExprAST::codegen(driver &drv)
 		if (!stepVal)
 			return nullptr;
 	}
-	else // Se non è stato specificato lo step
-	{
+	else // Se non è stato specificato lo step lo imposto uguale a 1.0
 		stepVal = ConstantFP::get(*drv.context, APFloat(1.0));
-	}
+
 
 	Value * endCond = end->codegen(drv);
 	if (!endCond)
@@ -572,6 +568,5 @@ Value * ForExprAST::codegen(driver &drv)
 		drv.NamedValues.erase(varName);
 
 	return bodyValue;
-	
 }
 
