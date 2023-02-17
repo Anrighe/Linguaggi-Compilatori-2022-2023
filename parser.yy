@@ -138,13 +138,13 @@ exp:
 | forexpr				{ $$ = $1; };
 
 ifexpr: 
-  "if" exp "then" exp "else" exp "end" 	{ $$ = new IfExprAST($2, $4, $6);}; 
+  "if" exp "then" exp "else" exp "end" 	{ $$ = new IfExprAST($2, $4, $6); }; 
 
 forexpr:
   "for" "id" "=" exp "," exp step "in" exp "end" 	{ $$ = new ForExprAST($2, $4, $6, $7, $9); };
 
 step:
-  %empty 				{ $$ = nullptr; }
+  %empty 				{ $$ = new NumberExprAST(1.0); }
 | "," exp				{ $$ = $2; };
 
 idexp:
@@ -152,18 +152,18 @@ idexp:
 | "id" "(" optexp ")"  	{ $$ = new CallExprAST($1, $3); };
 
 optexp:
-%empty                 { std::vector<ExprAST*> args;
+  %empty                { std::vector<ExprAST*> args;
                          args.push_back(nullptr);
 			 			 $$ = args;
-                       }
-| explist              { $$ = $1; };
+                       	}
+| explist              	{ $$ = $1; };
 
 explist:
-  exp                  { std::vector<ExprAST*> args;
+  exp                  	{ std::vector<ExprAST*> args;
                          args.push_back($1);
 			 			 $$ = args;
-                       }
-| exp "," explist      { $3.insert($3.begin(), $1); $$ = $3; };
+                       	}
+| exp "," explist      	{ $3.insert($3.begin(), $1); $$ = $3; };
 
 %%
 
