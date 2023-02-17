@@ -193,7 +193,7 @@ Value *BinaryExprAST::codegen(driver& drv)
 					return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpres"); // Conversione True/False a Double
 				}
 				else
-					return LogErrorV("Operatore binario = non supportato"); //non utilizzato inizialmente perché il solo op binario = non è ammesso TODO: Cancellare in caso di for implementato
+					return LogErrorV("Operatore binario = non supportato"); //non utilizzato inizialmente perché il solo op binario di assegnazione '=' non è ammesso
 			case '<':
 				if (Op[1] == '=') // <=
 				{
@@ -410,7 +410,7 @@ Value * IfExprAST::codegen(driver &drv)
 	if (drv.builder->GetInsertBlock() == nullptr) // Debug
 		std::cout<<"GetInsertBlock NULL"<<std::endl; // Debug
 
-	Function *function = drv.builder->GetInsertBlock()->getParent(); //getParent() trova la funzione che contiene i 3 blocchi
+	Function *function = drv.builder->GetInsertBlock()->getParent(); //getParent() recupera la funzione che contiene il basic block corrente
 
 	// Creazione dei tre blocchi base Then, Else e Merge
 	BasicBlock *ThenBB = BasicBlock::Create(*drv.context, "then", function);
@@ -496,7 +496,6 @@ void ForExprAST::visit()
 {
 	std::cout<<"( "<<varName<<"=";
 	start->visit();
-
 	end->visit();
 	std::cout<<" step:";
 	step->visit();
@@ -505,63 +504,65 @@ void ForExprAST::visit()
 	std::cout<<")"<<std::endl;
 }
 
-
 Value * ForExprAST::codegen(driver &drv)
 {
 	std::cout<<"CODEGEN FOREXPRAST"<<std::endl; // Debug
-	if (gettop()) 
-		LogErrorV("Variabile del for non definita");
-
 	Value * startVal = start->codegen(drv);
 	if (!startVal)
 		return nullptr;
 
-	Function * function = drv.builder->GetInsertBlock()->getParent();
-	BasicBlock * preHeaderBB = drv.builder->GetInsertBlock();
-	BasicBlock * loopBB = BasicBlock::Create(*drv.context, "loop", function);
+	Function * function = drv.builder->GetInsertBlock()->getParent(); // function punta alla funzione che contiene il basic block corrente
+	BasicBlock * preHeaderBB = drv.builder->GetInsertBlock(); // preHeaderBB punta al basic block corrente
+	BasicBlock * loopBB = BasicBlock::Create(*drv.context, "loop", function); // Creo il basic block del loop
 
 	drv.builder->CreateBr(loopBB);
 	
 	drv.builder->SetInsertPoint(loopBB);
 
-	PHINode * variable = drv.builder->CreatePHI(Type::getDoubleTy(*drv.context), 2, varName);
+	// Istruzione PHI per impostare varName in due occasioni diverse:
+	// 1) se sto entrando per il loop per la prima volta -> deve impostare varName a startVal
+	// 2) se sto rientrando nel loop -> deve impostare varName a nextvar
+	PHINode * variable = drv.builder->CreatePHI(Type::getDoubleTy(*drv.context), 2, varName); 
 	variable->addIncoming(startVal, preHeaderBB);
 
+	// Salvataggio temporaneo dell'eventuale variabile in scope chiamata come varName in oldVar
 	Value * oldVal = drv.NamedValues[varName];
-	drv.NamedValues[varName] = variable;
+	drv.NamedValues[varName] = variable; // Imposta il valore di varName nella symbol table
 
-	Value * bodyValue = body->codegen(drv); // risolvo l'espressione nel body che devo ritornare come valore del for
+	Value * bodyValue = body->codegen(drv); // Valuta l'espressione nel body che devo ritornare come valore del for
 	if (!bodyValue) 
 		return nullptr;
 
 	Value * stepVal = nullptr;
 	if (step)
 	{
-		stepVal = step->codegen(drv);
+		stepVal = step->codegen(drv); // Valuta l'espressione dello step
 		if (!stepVal)
 			return nullptr;
 	}
-	else // Se non è stato specificato lo step lo imposto uguale a 1.0
-		stepVal = ConstantFP::get(*drv.context, APFloat(1.0));
 
-
-	Value * endCond = end->codegen(drv);
+	Value * endCond = end->codegen(drv); // Valuta l'espressione end
 	if (!endCond)
 		return nullptr;
 
+	// Confronta la condizione endCond con 0.0
 	endCond = drv.builder->CreateFCmpONE(endCond, ConstantFP::get(*drv.context, APFloat(0.0)), "loopcond");
+	
+	// Calcolo del valore della variabile varName nella prossima iterazione
+	Value * nextVar = drv.builder->CreateFAdd(variable, stepVal, "nextvar"); 
 
-	Value * nextVar = drv.builder->CreateFAdd(variable, stepVal, "nextvar");
 
-	BasicBlock * loopEndBB = drv.builder->GetInsertBlock();
-	BasicBlock * afterBB = BasicBlock::Create(*drv.context, "afterloop", function);
+	BasicBlock * loopEndBB = drv.builder->GetInsertBlock(); // loopEndBB punta al basic block corrente
+	BasicBlock * afterBB = BasicBlock::Create(*drv.context, "afterloop", function); // Creazione basic block afterBB
 
-	drv.builder->CreateCondBr(endCond, loopBB, afterBB);
+	drv.builder->CreateCondBr(endCond, loopBB, afterBB); // Inserimento del branch condizionale nella fine di loopEndBB
 
 	drv.builder->SetInsertPoint(afterBB); // Tutto il codice seguente al loop verrà inserito nell'afterBB
 
-	variable->addIncoming(nextVar, loopEndBB);
+	// Aggiunge un nuovo 'caso' al blocco PHI che non poteva essere aggiunto precentemente perché non lo si conosceva ancora
+	variable->addIncoming(nextVar, loopEndBB); 
 
+	// Ripristino dell'eventuale variabile precedentemente oscurata
 	if (oldVal)
 		drv.NamedValues[varName] = oldVal;
 	else
