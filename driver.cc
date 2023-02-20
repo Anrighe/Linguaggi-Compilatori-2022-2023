@@ -416,7 +416,6 @@ Value * IfExprAST::codegen(driver &drv)
 	if (!ThenValue)
   		return nullptr;
 
-
 	drv.builder->CreateBr(MergeBB); // CreateBr: Crea un'istruzione di branch 'br label X'
 
 	ThenBB = drv.builder->GetInsertBlock(); // GetInsertBlock: ritorna il basic block dove la nuova istruzione verrà inserita
@@ -466,7 +465,7 @@ Value * UnaryExprAST::codegen(driver &drv)
 	if (gettop()) 
 		return TopExpression(this, drv);
 	
-	Value *R = RHS->codegen(drv);
+	Value *R = RHS->codegen(drv); // Risolvo la parte destra
 
 	if (sign == "+") // Se l'operatore unario è un + ritorno semplicemente il risultato della parte destra
 	{
@@ -496,6 +495,9 @@ void ForExprAST::visit()
 
 Value * ForExprAST::codegen(driver &drv)
 {
+	if (gettop()) 
+		return TopExpression(this, drv); // Inserisco la ForExpr in una funzione anonima
+
 	Value * startVal = start->codegen(drv);
 	if (!startVal)
 		return nullptr;
