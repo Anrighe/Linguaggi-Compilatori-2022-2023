@@ -39,7 +39,6 @@ Value* TopExpression(ExprAST* E, driver& drv)
 {
 	// Crea una funzione anonima il cui body è un'espressione top-level
 	// viene "racchiusa" un'espressione top-level
-	std::cout<<"CREO LA FUNZIONE ANONIMA\n"; // Debug
 	E->toggle(); // Evita la doppia emissione del prototipo
 	PrototypeAST *Proto = new PrototypeAST("__espr_anonima" + std::to_string(++drv.Cnt), std::vector<std::string>());
 	Proto->noemit();
@@ -114,7 +113,6 @@ Value *NumberExprAST::codegen(driver& drv)
 /****************** Variable Expression TreeAST *******************/
 VariableExprAST::VariableExprAST(std::string &Name): Name(Name) 
 { 
-	std::cout<<"COSTRUTTORE VARIABLEEXPRAST: "<<this->getName()<<"\n"; // Debug
 	top = false; 
 };
 
@@ -147,7 +145,6 @@ Value *VariableExprAST::codegen(driver& drv)
 /******************** Binary Expression Tree **********************/
 BinaryExprAST::BinaryExprAST(std::string Op, ExprAST* LHS, ExprAST* RHS): Op(Op), LHS(LHS), RHS(RHS) 
 { 	
-	std::cout<<"COSTRUTTORE BinaryExprAST\n"; // Debug
 	top = false; 
 };
 
@@ -162,10 +159,8 @@ void BinaryExprAST::visit()
 
 Value *BinaryExprAST::codegen(driver& drv) 
 {
-	std::cout<<"CODEGEN DI BINARY EXPR AST\n"; // Debug
 	if (gettop()) 
 	{
-		std::cout<<"RITORNO TOP EXPRESSION\n"; // Debug
     	return TopExpression(this, drv);
   	} 
 	else 
@@ -178,7 +173,6 @@ Value *BinaryExprAST::codegen(driver& drv)
 		switch (Op[0])
 		{
 			case '+':
-				std::cout<<"CASE + \n";
 				return drv.builder->CreateFAdd(L, R, "addregister");
 			case '-':
 				return drv.builder->CreateFSub(L, R, "subregister");
@@ -222,7 +216,9 @@ Value *BinaryExprAST::codegen(driver& drv)
 
 /********************* Call Expression Tree ***********************/
 CallExprAST::CallExprAST(std::string Callee, std::vector<ExprAST*> Args): Callee(Callee), Args(std::move(Args)) 
-	{ top = false; };
+{ 
+	top = false; 
+};
 
 void CallExprAST::visit() 
 {
@@ -310,8 +306,10 @@ Function *PrototypeAST::codegen(driver& drv)
 /************************* Function Tree **************************/
 FunctionAST::FunctionAST(PrototypeAST* Proto, ExprAST* Body): Proto(Proto), Body(Body) 
 {
-	if (Body == nullptr) external=true;
-	else external=false;
+	if (Body == nullptr) 
+		external=true;
+	else 
+		external=false;
 };
 
 void FunctionAST::visit() 
@@ -339,7 +337,7 @@ Function *FunctionAST::codegen(driver& drv)
 	if (!TheFunction)
 		TheFunction = Proto->codegen(drv);
 	if (!TheFunction)
-    	return nullptr;  // Se la definizione "fallisce" restituisce nullptr
+    	return nullptr;
 
 	// Crea un blocco di base in cui iniziare a inserire il codice
 	BasicBlock *BB = BasicBlock::Create(*drv.context, "entry", TheFunction);
@@ -371,7 +369,6 @@ Function *FunctionAST::codegen(driver& drv)
 /********************** If Expressions ********************/
 IfExprAST::IfExprAST(ExprAST * cond, ExprAST * thenExpr, ExprAST * elseExpr)
 {	
-	std::cout<<"COSTRUTTORE IFEXPRAST\n"; //DEBUG
 	this->cond = cond; // Condizione dopo l'if
 	this->thenExpr = thenExpr; // Espressione dopo il then
 	this->elseExpr = elseExpr; // Espressione dopo l'else
@@ -390,8 +387,6 @@ void IfExprAST::visit()
 
 Value * IfExprAST::codegen(driver &drv)
 {
-	std::cout<<"TOP IN IFEXPRAST: "<<this->top<<std::endl; //Debug
-
 	// top vale 0 quando la IfExprAST è già dentro a una funzione
 	// top vale 1 quando la IfExprAST NON è dentro a una funzione
 	if (gettop()) 
@@ -404,11 +399,6 @@ Value * IfExprAST::codegen(driver &drv)
 
 	// Conversione della condizione ad un booleano comparandola in NON EQUAL con 0.0
   	condition = drv.builder->CreateFCmpUNE(condition, ConstantFP::get(*drv.context, APFloat(0.0)), "iftest"); // CreateFloatCompareUnorderedNotEqual
-	
-	if (drv.builder == nullptr) // Debug
-		std::cout<<"DRV NULL"<<std::endl; // Debug
-	if (drv.builder->GetInsertBlock() == nullptr) // Debug
-		std::cout<<"GetInsertBlock NULL"<<std::endl; // Debug
 
 	Function *function = drv.builder->GetInsertBlock()->getParent(); //getParent() recupera la funzione che contiene il basic block corrente
 
@@ -506,7 +496,6 @@ void ForExprAST::visit()
 
 Value * ForExprAST::codegen(driver &drv)
 {
-	std::cout<<"CODEGEN FOREXPRAST"<<std::endl; // Debug
 	Value * startVal = start->codegen(drv);
 	if (!startVal)
 		return nullptr;
