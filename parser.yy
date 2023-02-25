@@ -77,7 +77,7 @@
 %type <std::vector<std::string>> idseq
 %type <IfExprAST*> ifexpr
 %type <ForExprAST*> forexpr
-%type <StepAST*> step
+%type <ExprAST*> step
 
 
 
@@ -135,35 +135,35 @@ exp:
 | "(" exp ")"          	{ $$ = $2; }
 | "number"           	{ $$ = new NumberExprAST($1); }
 | ifexpr 				{ $$ = $1; }
-| forexpr				{ std::cout<<"FOREXPR\n"; };
+| forexpr				{ $$ = $1; };
 
 ifexpr: 
-  "if" exp "then" exp "else" exp "end" 	{ $$ = new IfExprAST($2, $4, $6);}; 
+  "if" exp "then" exp "else" exp "end" 	{ $$ = new IfExprAST($2, $4, $6); }; 
 
 forexpr:
-  "for" idexp "=" exp "," exp step "in" exp "end" 	{ std::cout<<"FOR IDEXP = EXP, EXP STEP IN EXP END"; };
+  "for" "id" "=" exp "," exp step "in" exp "end" 	{ $$ = new ForExprAST($2, $4, $6, $7, $9); };
 
 step:
-  %empty 				{ std::cout<<"empty step\n"; }
-| "," exp				{ $$ = new StepAST($2); };
+  %empty 				{ $$ = new NumberExprAST(1.0); }
+| "," exp				{ $$ = $2; };
 
 idexp:
-  "id"                 { $$ = new VariableExprAST($1); }
-| "id" "(" optexp ")"  { $$ = new CallExprAST($1, $3); };
+  "id"                 	{ $$ = new VariableExprAST($1); }
+| "id" "(" optexp ")"  	{ $$ = new CallExprAST($1, $3); };
 
 optexp:
-%empty                 { std::vector<ExprAST*> args;
+  %empty                { std::vector<ExprAST*> args;
                          args.push_back(nullptr);
 			 			 $$ = args;
-                       }
-| explist              { $$ = $1; };
+                       	}
+| explist              	{ $$ = $1; };
 
 explist:
-  exp                  { std::vector<ExprAST*> args;
+  exp                  	{ std::vector<ExprAST*> args;
                          args.push_back($1);
 			 			 $$ = args;
-                       }
-| exp "," explist      { $3.insert($3.begin(), $1); $$ = $3; };
+                       	}
+| exp "," explist      	{ $3.insert($3.begin(), $1); $$ = $3; };
 
 %%
 

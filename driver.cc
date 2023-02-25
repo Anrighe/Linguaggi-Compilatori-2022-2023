@@ -3,7 +3,7 @@
 
 Value *LogErrorV(const std::string Str) 
 {
-	std::cerr << Str << std::endl;
+	std::cerr<<Str<<std::endl;
 	return nullptr;
 }
 
@@ -39,7 +39,6 @@ Value* TopExpression(ExprAST* E, driver& drv)
 {
 	// Crea una funzione anonima il cui body è un'espressione top-level
 	// viene "racchiusa" un'espressione top-level
-	std::cout<<"CREO LA FUNZIONE ANONIMA\n"; // Debug
 	E->toggle(); // Evita la doppia emissione del prototipo
 	PrototypeAST *Proto = new PrototypeAST("__espr_anonima" + std::to_string(++drv.Cnt), std::vector<std::string>());
 	Proto->noemit();
@@ -146,7 +145,6 @@ Value *VariableExprAST::codegen(driver& drv)
 /******************** Binary Expression Tree **********************/
 BinaryExprAST::BinaryExprAST(std::string Op, ExprAST* LHS, ExprAST* RHS): Op(Op), LHS(LHS), RHS(RHS) 
 { 	
-	std::cout<<"COSTRUTTORE BinaryExprAST\n"; // Debug
 	top = false; 
 };
 
@@ -161,10 +159,8 @@ void BinaryExprAST::visit()
 
 Value *BinaryExprAST::codegen(driver& drv) 
 {
-	std::cout<<"CODEGEN DI BINARY EXPR AST\n"; // Debug
 	if (gettop()) 
 	{
-		std::cout<<"RITORNO TOP EXPRESSION\n"; // Debug
     	return TopExpression(this, drv);
   	} 
 	else 
@@ -191,7 +187,7 @@ Value *BinaryExprAST::codegen(driver& drv)
 					return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpres"); // Conversione True/False a Double
 				}
 				else
-					return LogErrorV("Operatore binario = non supportato"); //non utilizzato inizialmente perché il solo op binario = non è ammesso TODO: Cancellare in caso di for implementato
+					return LogErrorV("Operatore binario = non supportato"); //non utilizzato inizialmente perché il solo op binario di assegnazione '=' non è ammesso
 			case '<':
 				if (Op[1] == '=') // <=
 				{
@@ -209,7 +205,7 @@ Value *BinaryExprAST::codegen(driver& drv)
 				L = drv.builder->CreateFCmpUGT(L, R, "compareGT"); // CreateFloatCompareUnorderedGreaterThan ritorna un Value che contiene True o False (Unordered: non considera i NaN)
 				return drv.builder->CreateUIToFP(L, Type::getDoubleTy(*drv.context), "cmpGTres"); // Conversione True/False a Double
 			case ':':
-				// Nel caso di un : (compound expression), è sufficiente ritornare il Value * R, ovvero la valutazione dell'espressione destra,
+				// Nel caso di un ':' (compound expression), è sufficiente ritornare il Value * R, ovvero la valutazione dell'espressione destra,
 				// in quanto "Il valore di una espressione composta si definisce semplicemente come il valore dell’ultima espressione nella sequenza"
 				return R;
 			default:  
@@ -220,7 +216,9 @@ Value *BinaryExprAST::codegen(driver& drv)
 
 /********************* Call Expression Tree ***********************/
 CallExprAST::CallExprAST(std::string Callee, std::vector<ExprAST*> Args): Callee(Callee), Args(std::move(Args)) 
-	{ top = false; };
+{ 
+	top = false; 
+};
 
 void CallExprAST::visit() 
 {
@@ -308,16 +306,18 @@ Function *PrototypeAST::codegen(driver& drv)
 /************************* Function Tree **************************/
 FunctionAST::FunctionAST(PrototypeAST* Proto, ExprAST* Body): Proto(Proto), Body(Body) 
 {
-	if (Body == nullptr) external=true;
-	else external=false;
+	if (Body == nullptr) 
+		external=true;
+	else 
+		external=false;
 };
 
 void FunctionAST::visit() 
 {
 	std::cout << Proto->getName() << "( ";
-	for (auto it=Proto->getArgs().begin(); it!= Proto->getArgs().end(); ++it) 
+	for (auto it = Proto->getArgs().begin(); it!= Proto->getArgs().end(); ++it) 
 	{
-		std::cout << *it << ' ';
+		std::cout<<*it<<' ';
   	};
 	std::cout << ')';
 	Body->visit();
@@ -331,13 +331,13 @@ Function *FunctionAST::codegen(driver& drv)
 	// E se non esiste prova a definirla
 	if (TheFunction) 
 	{
-		LogErrorV("Funzione "+name+" già definita");
+		LogErrorV("Funzione " + name + " già definita");
 		return nullptr;
 	}
 	if (!TheFunction)
 		TheFunction = Proto->codegen(drv);
 	if (!TheFunction)
-    	return nullptr;  // Se la definizione "fallisce" restituisce nullptr
+    	return nullptr;
 
 	// Crea un blocco di base in cui iniziare a inserire il codice
 	BasicBlock *BB = BasicBlock::Create(*drv.context, "entry", TheFunction);
@@ -369,7 +369,6 @@ Function *FunctionAST::codegen(driver& drv)
 /********************** If Expressions ********************/
 IfExprAST::IfExprAST(ExprAST * cond, ExprAST * thenExpr, ExprAST * elseExpr)
 {	
-	std::cout<<"COSTRUTTORE IFEXPRAST\n"; //DEBUG
 	this->cond = cond; // Condizione dopo l'if
 	this->thenExpr = thenExpr; // Espressione dopo il then
 	this->elseExpr = elseExpr; // Espressione dopo l'else
@@ -377,19 +376,17 @@ IfExprAST::IfExprAST(ExprAST * cond, ExprAST * thenExpr, ExprAST * elseExpr)
 
 void IfExprAST::visit()
 {
-	std::cout<<"(";
+	std::cout<<"( ";
 	cond->visit();
-	std::cout<<"then";
+	std::cout<<"then:";
 	thenExpr->visit();
-	std::cout<<"else";
+	std::cout<<"else:";
 	elseExpr->visit();
 	std::cout<<")"<<std::endl;
 }
 
 Value * IfExprAST::codegen(driver &drv)
 {
-	std::cout<<"TOP IN IFEXPRAST: "<<this->top<<std::endl; //Debug
-
 	// top vale 0 quando la IfExprAST è già dentro a una funzione
 	// top vale 1 quando la IfExprAST NON è dentro a una funzione
 	if (gettop()) 
@@ -402,13 +399,8 @@ Value * IfExprAST::codegen(driver &drv)
 
 	// Conversione della condizione ad un booleano comparandola in NON EQUAL con 0.0
   	condition = drv.builder->CreateFCmpUNE(condition, ConstantFP::get(*drv.context, APFloat(0.0)), "iftest"); // CreateFloatCompareUnorderedNotEqual
-	
-	if (drv.builder == nullptr) // Debug
-		std::cout<<"DRV NULL"<<std::endl; // Debug
-	if (drv.builder->GetInsertBlock() == nullptr) // Debug
-		std::cout<<"GetInsertBlock NULL"<<std::endl; // Debug
 
-	Function *function = drv.builder->GetInsertBlock()->getParent(); //getParent() trova la funzione che contiene i 3 blocchi
+	Function *function = drv.builder->GetInsertBlock()->getParent(); //getParent() recupera la funzione che contiene il basic block corrente
 
 	// Creazione dei tre blocchi base Then, Else e Merge
 	BasicBlock *ThenBB = BasicBlock::Create(*drv.context, "then", function);
@@ -423,7 +415,6 @@ Value * IfExprAST::codegen(driver &drv)
 	Value * ThenValue = thenExpr->codegen(drv); // Valutazione espressione del then
 	if (!ThenValue)
   		return nullptr;
-
 
 	drv.builder->CreateBr(MergeBB); // CreateBr: Crea un'istruzione di branch 'br label X'
 
@@ -474,7 +465,7 @@ Value * UnaryExprAST::codegen(driver &drv)
 	if (gettop()) 
 		return TopExpression(this, drv);
 	
-	Value *R = RHS->codegen(drv);
+	Value *R = RHS->codegen(drv); // Risolvo la parte destra
 
 	if (sign == "+") // Se l'operatore unario è un + ritorno semplicemente il risultato della parte destra
 	{
@@ -490,52 +481,84 @@ Value * UnaryExprAST::codegen(driver &drv)
 
 
 /********************** For Expression ********************/
-ForExprAST::ForExprAST(std::string varName, ExprAST * start, ExprAST * end, ExprAST * step, ExprAST * body)
-{
-	this->varName = varName;
-	this->start = start;
-	this->end = end;
-	this->step = step;
-	this->body = body;
-}
-
 void ForExprAST::visit()
 {
-	std::cout<<"("<<" ";
-	std::cout<<")";
+	std::cout<<"( "<<varName<<"=";
+	start->visit();
+	end->visit();
+	std::cout<<" step:";
+	step->visit();
+	std::cout<<" body:";
+	body->visit();
+	std::cout<<")"<<std::endl;
 }
-
 
 Value * ForExprAST::codegen(driver &drv)
 {
-	std::cout<<"CODEGEN FOREXPRAST"<<std::endl; // Debug
 	if (gettop()) 
-		return TopExpression(this, drv);
+		return TopExpression(this, drv); // Inserisco la ForExpr in una funzione anonima
+
+	Value * startVal = start->codegen(drv);
+	if (!startVal)
+		return nullptr;
+
+	Function * function = drv.builder->GetInsertBlock()->getParent(); // function punta alla funzione che contiene il basic block corrente
+	BasicBlock * preHeaderBB = drv.builder->GetInsertBlock(); // preHeaderBB punta al basic block corrente
+	BasicBlock * loopBB = BasicBlock::Create(*drv.context, "loop", function); // Creo il basic block del loop
+
+	drv.builder->CreateBr(loopBB);
 	
-}
+	drv.builder->SetInsertPoint(loopBB);
+
+	// Istruzione PHI per impostare varName in due occasioni diverse:
+	// 1) se sto entrando per il loop per la prima volta -> deve impostare varName a startVal
+	// 2) se sto rientrando nel loop -> deve impostare varName a nextvar
+	PHINode * variable = drv.builder->CreatePHI(Type::getDoubleTy(*drv.context), 2, varName); 
+	variable->addIncoming(startVal, preHeaderBB);
+
+	// Salvataggio temporaneo dell'eventuale variabile in scope chiamata come varName in oldVar
+	Value * oldVal = drv.NamedValues[varName];
+	drv.NamedValues[varName] = variable; // Imposta il valore di varName nella symbol table
+
+	Value * bodyValue = body->codegen(drv); // Valuta l'espressione nel body che devo ritornare come valore del for
+	if (!bodyValue) 
+		return nullptr;
+
+	Value * stepVal = nullptr;
+	if (step)
+	{
+		stepVal = step->codegen(drv); // Valuta l'espressione dello step
+		if (!stepVal)
+			return nullptr;
+	}
+
+	Value * endCond = end->codegen(drv); // Valuta l'espressione end
+	if (!endCond)
+		return nullptr;
+
+	// Confronta la condizione endCond con 0.0
+	endCond = drv.builder->CreateFCmpONE(endCond, ConstantFP::get(*drv.context, APFloat(0.0)), "loopcond");
+	
+	// Calcolo del valore della variabile varName nella prossima iterazione
+	Value * nextVar = drv.builder->CreateFAdd(variable, stepVal, "nextvar"); 
 
 
-/********************** Step ********************/
-StepAST::StepAST(ExprAST * stepValue)
-{
-	std::cout<<"COSTRUTTORE STEPAST\n"; // Debug
-	this->stepValue = stepValue;
-};
+	BasicBlock * loopEndBB = drv.builder->GetInsertBlock(); // loopEndBB punta al basic block corrente
+	BasicBlock * afterBB = BasicBlock::Create(*drv.context, "afterloop", function); // Creazione basic block afterBB
 
-void StepAST::visit()
-{
-	std::cout<<"VISIT DI STEPAST\n"; // Debug
-}
+	drv.builder->CreateCondBr(endCond, loopBB, afterBB); // Inserimento del branch condizionale nella fine di loopEndBB
 
-ExprAST * StepAST::codegen(driver &drv)
-{
-	std::cout<<"CODEGEN DI STEPAST\n"; // Debug
-	//if (gettop()) 
-		//return TopExpression(this, drv);
+	drv.builder->SetInsertPoint(afterBB); // Tutto il codice seguente al loop verrà inserito nell'afterBB
 
-	return stepValue;
-	//Value *step = stepValue->codegen(drv);
+	// Aggiunge un nuovo 'caso' al blocco PHI che non poteva essere aggiunto precentemente perché non lo si conosceva ancora
+	variable->addIncoming(nextVar, loopEndBB); 
 
-	//return drv.builder->CreateUIToFP(step, Type::getDoubleTy(*drv.context), "stepres"); 
+	// Ripristino dell'eventuale variabile precedentemente oscurata
+	if (oldVal)
+		drv.NamedValues[varName] = oldVal;
+	else
+		drv.NamedValues.erase(varName);
+
+	return bodyValue;
 }
 

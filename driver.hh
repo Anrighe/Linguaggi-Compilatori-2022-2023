@@ -216,30 +216,18 @@ class UnaryExprAST : public ExprAST
 class ForExprAST : public ExprAST
 {
 	private:
-		std::string varName;
-		ExprAST * start;
-		ExprAST * end;
-		ExprAST * step;
-		ExprAST * body;
+		std::string varName; // Nome della variabile su cui il for itera
+		ExprAST * start; // Espressione che fornisce il valore iniziale della variabile su cui il for itera
+		ExprAST * end; // Espressione che fornisce la condizione di terminazione del for
+		ExprAST * step; // Step del for (se non specificato = 1)
+		ExprAST * body; // Espressione da svolgere a ogni iterazione del for
 
 	public:
-		ForExprAST(std::string varName, ExprAST * start, ExprAST * end,ExprAST * step, ExprAST * body);
+		ForExprAST(std::string &varName, ExprAST * start, ExprAST * end, ExprAST * step, ExprAST * body)
+			: varName(varName), start(start), end(end), step(step), body(body) {}
 		void visit() override;
 		Value * codegen(driver &drv) override;
 };
-
-// ForExprAST - Classe per la rappresentazione dei costrutti step
-class StepAST
-{
-	private:
-		ExprAST * stepValue;
-
-	public:
-		StepAST(ExprAST * stepValue);
-		void visit();
-		ExprAST * codegen(driver &drv);
-};
-
 
 //void InitializeModule();
 
