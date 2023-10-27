@@ -516,7 +516,7 @@ Value * ForExprAST::codegen(driver &drv)
 	PHINode * variable = drv.builder->CreatePHI(Type::getDoubleTy(*drv.context), 2, varName); 
 	variable->addIncoming(startVal, preHeaderBB);
 
-	// Salvataggio temporaneo dell'eventuale variabile in scope chiamata come varName in oldVar
+	// Salvataggio temporaneo dell'eventuale variabile in scope chiamata come varName in oldVal
 	Value * oldVal = drv.NamedValues[varName];
 	drv.NamedValues[varName] = variable; // Imposta il valore di varName nella symbol table
 

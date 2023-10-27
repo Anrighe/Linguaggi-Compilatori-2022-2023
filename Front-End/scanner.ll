@@ -21,7 +21,7 @@
 #endif
 
 yy::parser::symbol_type check_keywords(std::string lexeme, yy::location& loc);
-%} 
+%}
 
 %option noyywrap nounput batch debug noinput
 
